@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import Pagination from '~/components/Pagination/Pagination';
 import NoDataRow from '~/components/Skeletons/NoDataRow';
@@ -13,21 +13,11 @@ import styles from './PositionsTable.module.css';
 import PositionsTableHeader from './PositionsTableHeader';
 import PositionsTableRow from './PositionsTableRow';
 
-interface PositionsTableProps {
-    pageMode?: boolean;
-}
-
-export default function PositionsTable(props: PositionsTableProps) {
-    const { pageMode } = props;
+export default function PositionsTable() {
     const navigate = useNavigate();
     const { coinPriceMap } = useTradeDataStore();
-    const [sortDirection, setSortDirection] = useState<TableSortDirection>();
     const [sortBy, setSortBy] = useState<PositionDataSortBy>();
-
-    const handleViewAll = () => {
-        navigate(`/positions`);
-    };
-
+    const [sortDirection, setSortDirection] = useState<TableSortDirection>();
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(20);
     const [tableState, setTableState] = useState<TableState>(
@@ -35,53 +25,55 @@ export default function PositionsTable(props: PositionsTableProps) {
     );
 
     const { positions, fetchedChannels } = useTradeDataStore();
-    const limit = 10;
+    const webDataFetched = useMemo(
+        () => fetchedChannels.has(WsChannels.WEB_DATA2),
+        [fetchedChannels],
+    );
 
-    const webDataFetched = useMemo(() => {
-        return fetchedChannels.has(WsChannels.WEB_DATA2);
-    }, [fetchedChannels]);
+    const sortedPositions = useMemo(
+        () => sortPositionData(positions, sortBy, sortDirection, coinPriceMap),
+        [positions, sortBy, sortDirection, coinPriceMap],
+    );
 
-    const sortedPositions = useMemo(() => {
-        return sortPositionData(positions, sortBy, sortDirection, coinPriceMap);
-    }, [positions, sortBy, sortDirection]);
-
-    const positionsToShow = useMemo(() => {
-        if (pageMode) {
-            return sortedPositions.slice(
-                page * rowsPerPage,
-                (page + 1) * rowsPerPage,
-            );
-        }
-        return sortedPositions.slice(0, limit);
-    }, [sortedPositions, page, rowsPerPage, pageMode]);
+    const positionsToShow = useMemo(
+        () =>
+            sortedPositions.slice(page * rowsPerPage, (page + 1) * rowsPerPage),
+        [sortedPositions, page, rowsPerPage],
+    );
 
     useEffect(() => {
-        if (webDataFetched) {
-            if (positionsToShow.length > 0) {
-                setTableState(TableState.FILLED);
-            } else {
-                setTableState(TableState.EMPTY);
-            }
-        } else {
-            setTableState(TableState.LOADING);
-        }
-    }, [positionsToShow, webDataFetched]);
+        if (!webDataFetched) setTableState(TableState.LOADING);
+        else
+            setTableState(
+                positionsToShow.length > 0
+                    ? TableState.FILLED
+                    : TableState.EMPTY,
+            );
+    }, [webDataFetched, positionsToShow]);
 
     const handleSort = (key: string) => {
-        if (sortBy === key) {
-            if (sortDirection === 'desc') {
-                setSortDirection('asc');
-            } else if (sortDirection === 'asc') {
-                setSortDirection(undefined);
-                setSortBy(undefined);
-            } else {
-                setSortDirection('desc');
-            }
-        } else {
-            setSortBy(key as PositionDataSortBy);
-            setSortDirection('desc');
-        }
+        // if not on first page, reset
+        if (page !== 0) setPage(0);
+        setSortBy((prev) =>
+            prev === key ? undefined : (key as PositionDataSortBy),
+        );
+        setSortDirection((prev) => {
+            if (prev == null || sortBy !== key) return 'desc';
+            if (prev === 'desc') return 'asc';
+            return undefined;
+        });
     };
+
+    const handleRowsPerPageChange = (newRows: number) => {
+        setRowsPerPage(newRows);
+        setPage(0);
+    };
+
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
+    };
+
+    const handleViewAll = () => navigate('/positions');
 
     return (
         <div className={styles.tableWrapper}>
@@ -98,15 +90,25 @@ export default function PositionsTable(props: PositionsTableProps) {
                         sortClickHandler={handleSort}
                     />
                     <div className={styles.tableBody}>
-                        {tableState === TableState.FILLED && (
+                        {tableState === TableState.FILLED ? (
                             <>
                                 {positionsToShow.map((position, index) => (
                                     <PositionsTableRow
-                                        key={`position-${index}`}
+                                        key={index}
                                         position={position}
                                     />
                                 ))}
-                                {positions.length > limit && !pageMode && (
+                                {positions.length > rowsPerPage ? (
+                                    <Pagination
+                                        page={page}
+                                        totalCount={positions.length}
+                                        rowsPerPage={rowsPerPage}
+                                        onPageChange={handlePageChange}
+                                        onRowsPerPageChange={
+                                            handleRowsPerPageChange
+                                        }
+                                    />
+                                ) : (
                                     <a
                                         href='#'
                                         className={styles.viewAllLink}
@@ -118,21 +120,10 @@ export default function PositionsTable(props: PositionsTableProps) {
                                         View All
                                     </a>
                                 )}
-
-                                {pageMode && (
-                                    <>
-                                        <Pagination
-                                            totalCount={positions.length}
-                                            onPageChange={setPage}
-                                            rowsPerPage={rowsPerPage}
-                                            onRowsPerPageChange={setRowsPerPage}
-                                        />
-                                    </>
-                                )}
                             </>
+                        ) : (
+                            <NoDataRow />
                         )}
-
-                        {tableState === TableState.EMPTY && <NoDataRow />}
                     </div>
                 </>
             )}
