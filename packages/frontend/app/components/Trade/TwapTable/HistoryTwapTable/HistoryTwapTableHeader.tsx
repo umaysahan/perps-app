@@ -1,14 +1,80 @@
-import type { TableSortDirection } from '~/utils/CommonIFs';
+import type { TableSortDirection, HeaderCell } from '~/utils/CommonIFs';
 import styles from './HistoryTwapTable.module.css';
 import SortIcon from '~/components/Vault/SortIcon';
 import type { UserFillSortBy } from '~/utils/UserDataIFs';
+import { formatTimestamp } from '~/utils/orderbook/OrderBookUtils';
 
-export interface HeaderCell {
-    name: string;
-    key: string;
-    sortable: boolean;
-    className: string;
-}
+export const HistoryTwapTableModel:
+    | HeaderCell<number>[]
+    | HeaderCell<string>[] = [
+    {
+        name: 'Time',
+        key: 'time',
+        sortable: true,
+        className: 'timeCell',
+        exportable: true,
+        exportAction: (data: number) => {
+            // There is an error here because date is 1970 !!!  console.log(formatTimestamp(data).replaceAll(',', ' '))
+            return formatTimestamp(data).replaceAll(',', ' ');
+        },
+    } as HeaderCell<number>,
+    {
+        name: 'Coin',
+        key: 'coin',
+        sortable: true,
+        className: styles.coinCell,
+        exportable: true,
+    },
+    {
+        name: 'Total Size',
+        key: 'side',
+        sortable: true,
+        className: styles.totalSizeCell,
+        exportable: true,
+    },
+    {
+        name: 'Executed Size',
+        key: 'px',
+        sortable: true,
+        className: styles.executedSizeCell,
+        exportable: true,
+    },
+    {
+        name: 'Average Price',
+        key: 'sz',
+        sortable: true,
+        className: styles.averagePriceCell,
+        exportable: true,
+    },
+    {
+        name: 'Total Runtime',
+        key: 'value',
+        sortable: true,
+        className: styles.totalRuntimeCell,
+        exportable: true,
+    },
+    {
+        name: 'Reduce Only',
+        key: 'fee',
+        sortable: true,
+        className: styles.reduceOnlyCell,
+        exportable: true,
+    },
+    {
+        name: 'Randomize',
+        key: 'closedPnl',
+        sortable: true,
+        className: styles.randomizeCell,
+        exportable: true,
+    },
+    {
+        name: 'Status',
+        key: 'status',
+        sortable: true,
+        className: styles.statusCell,
+        exportable: true,
+    },
+];
 
 interface HistoryTwapTableHeaderProps {
     sortBy?: UserFillSortBy;
@@ -21,66 +87,9 @@ export default function HistoryTwapTableHeader({
     sortDirection,
     sortClickHandler,
 }: HistoryTwapTableHeaderProps) {
-    const tableHeaders: HeaderCell[] = [
-        {
-            name: 'Time',
-            key: 'time',
-            sortable: true,
-            className: styles.timeCell,
-        },
-        {
-            name: 'Coin',
-            key: 'coin',
-            sortable: true,
-            className: styles.coinCell,
-        },
-        {
-            name: 'Total Size',
-            key: 'side',
-            sortable: true,
-            className: styles.totalSizeCell,
-        },
-        {
-            name: 'Executed Size',
-            key: 'px',
-            sortable: true,
-            className: styles.executedSizeCell,
-        },
-        {
-            name: 'Average Price',
-            key: 'sz',
-            sortable: true,
-            className: styles.averagePriceCell,
-        },
-        {
-            name: 'Total Runtime',
-            key: 'value',
-            sortable: true,
-            className: styles.totalRuntimeCell,
-        },
-        {
-            name: 'Reduce Only',
-            key: 'fee',
-            sortable: true,
-            className: styles.reduceOnlyCell,
-        },
-        {
-            name: 'Randomize',
-            key: 'closedPnl',
-            sortable: true,
-            className: styles.randomizeCell,
-        },
-        {
-            name: 'Status',
-            key: 'status',
-            sortable: true,
-            className: styles.statusCell,
-        },
-    ];
-
     return (
         <div className={styles.headerContainer}>
-            {tableHeaders.map((header) => (
+            {HistoryTwapTableModel.map((header) => (
                 <div
                     key={header.key}
                     className={`${styles.cell} ${styles.headerCell} ${header.className} ${header.sortable ? styles.sortable : ''}`}

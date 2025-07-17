@@ -4,9 +4,10 @@ import { sortTwapFillHistory } from '~/processors/processUserFills';
 import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import type { TwapSliceFillIF, UserFillSortBy } from '~/utils/UserDataIFs';
-import FillTwapTableHeader from './FillTwapTableHeader';
+import FillTwapTableHeader, { FillTwapTableModel } from './FillTwapTableHeader';
 import FillTwapTableRow from './FillTwapTableRow';
 import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
+import { useInfoApi } from '~/hooks/useInfoApi';
 
 interface FillTwapTableProps {
     data: TwapSliceFillIF[];
@@ -19,6 +20,8 @@ export default function FillTwapTable(props: FillTwapTableProps) {
     const { data, isFetched, selectedFilter, pageMode } = props;
 
     const { symbol } = useTradeDataStore();
+
+    const { fetchTwapSliceFills } = useInfoApi();
 
     const { debugWallet } = useDebugStore();
 
@@ -45,7 +48,14 @@ export default function FillTwapTable(props: FillTwapTableProps) {
 
     return (
         <>
-            <GenericTable
+            <GenericTable<
+                TwapSliceFillIF,
+                UserFillSortBy,
+                (
+                    address: string,
+                    aggregateByTime: boolean,
+                ) => Promise<TwapSliceFillIF[]>
+            >
                 storageKey={`FillTwapTable_${currentUserRef.current}`}
                 data={filteredData as any}
                 renderHeader={(sortDirection, sortClickHandler, sortBy) => (
@@ -70,6 +80,9 @@ export default function FillTwapTable(props: FillTwapTableProps) {
                 defaultSortBy={'time'}
                 defaultSortDirection={'desc'}
                 heightOverride={`${pageMode ? '100%' : '90%'}`}
+                tableModel={FillTwapTableModel}
+                csvDataFetcher={fetchTwapSliceFills}
+                csvDataFetcherArgs={[debugWallet.address, true]}
             />
         </>
     );

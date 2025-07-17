@@ -7,9 +7,12 @@ import type {
     OrderDataSortBy,
 } from '~/utils/orderbook/OrderBookIFs';
 import { sortOrderData } from '~/utils/orderbook/OrderBookUtils';
-import OpenOrdersTableHeader from './OpenOrdersTableHeader';
+import OpenOrdersTableHeader, {
+    OpenOrdersTableModel,
+} from './OpenOrdersTableHeader';
 import OpenOrdersTableRow from './OpenOrdersTableRow';
 import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
+import { useInfoApi } from '~/hooks/useInfoApi';
 interface OpenOrdersTableProps {
     data: OrderDataIF[];
     onCancel?: (time: number, coin: string) => void;
@@ -27,6 +30,8 @@ export default function OpenOrdersTable(props: OpenOrdersTableProps) {
             onCancel(time, coin);
         }
     };
+
+    const { fetchOpenOrders } = useInfoApi();
 
     const { debugWallet } = useDebugStore();
 
@@ -60,7 +65,14 @@ export default function OpenOrdersTable(props: OpenOrdersTableProps) {
 
     return (
         <>
-            <GenericTable
+            <GenericTable<
+                OrderDataIF,
+                OrderDataSortBy,
+                (
+                    address: string,
+                    aggregateByTime: boolean,
+                ) => Promise<OrderDataIF[]>
+            >
                 storageKey={`OpenOrdersTable_${currentUserRef.current}`}
                 data={filteredOrders}
                 renderHeader={(sortDirection, sortClickHandler, sortBy) => (
@@ -85,6 +97,9 @@ export default function OpenOrdersTable(props: OpenOrdersTableProps) {
                 skeletonColRatios={[1, 2, 2, 1, 1, 2, 1, 1, 2, 3, 1]}
                 defaultSortBy={'timestamp'}
                 defaultSortDirection={'desc'}
+                tableModel={OpenOrdersTableModel}
+                csvDataFetcher={fetchOpenOrders}
+                csvDataFetcherArgs={[debugWallet.address, true]}
             />
         </>
     );

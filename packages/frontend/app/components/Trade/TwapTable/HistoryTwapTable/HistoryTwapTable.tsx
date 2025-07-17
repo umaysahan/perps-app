@@ -6,9 +6,12 @@ import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import { TableState } from '~/utils/CommonIFs';
 import type { TwapHistoryIF, UserFillSortBy } from '~/utils/UserDataIFs';
-import HistoryTwapTableHeader from './HistoryTwapTableHeader';
+import HistoryTwapTableHeader, {
+    HistoryTwapTableModel,
+} from './HistoryTwapTableHeader';
 import HistoryTwapTableRow from './HistoryTwapTableRow';
 import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
+import { useInfoApi } from '~/hooks/useInfoApi';
 interface HistoryTwapTableProps {
     data: TwapHistoryIF[];
     isFetched: boolean;
@@ -20,6 +23,8 @@ export default function HistoryTwapTable(props: HistoryTwapTableProps) {
     const { data, isFetched, selectedFilter, pageMode } = props;
 
     const { symbol } = useTradeDataStore();
+
+    const { fetchTwapHistory } = useInfoApi();
 
     const { debugWallet } = useDebugStore();
 
@@ -46,7 +51,14 @@ export default function HistoryTwapTable(props: HistoryTwapTableProps) {
 
     return (
         <>
-            <GenericTable
+            <GenericTable<
+                TwapHistoryIF,
+                UserFillSortBy,
+                (
+                    address: string,
+                    aggregateByTime: boolean,
+                ) => Promise<TwapHistoryIF[]>
+            >
                 storageKey={`HistoryTwapTable_${currentUserRef.current}`}
                 data={filteredData as any}
                 renderHeader={(sortDirection, sortClickHandler, sortBy) => (
@@ -71,6 +83,9 @@ export default function HistoryTwapTable(props: HistoryTwapTableProps) {
                 defaultSortBy={'time'}
                 defaultSortDirection={'desc'}
                 heightOverride={`${pageMode ? '100%' : '90%'}`}
+                tableModel={HistoryTwapTableModel}
+                csvDataFetcher={fetchTwapHistory}
+                csvDataFetcherArgs={[debugWallet.address, true]}
             />
         </>
     );
