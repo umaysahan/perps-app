@@ -51,7 +51,7 @@ export default function TradeHistoryTable(props: TradeHistoryTableProps) {
         }
 
         return data;
-    }, [data, selectedFilter]);
+    }, [data, selectedFilter, symbol]);
 
     const viewAllLink = useMemo(() => {
         return `${EXTERNAL_PAGE_URL_PREFIX}/tradeHistory/${debugWallet.address}`;

@@ -201,6 +201,7 @@ export default function TradeTable(props: TradeTableProps) {
                     <TradeHistoryTable
                         data={userFills}
                         isFetched={tradeHistoryFetched}
+                        selectedFilter={selectedFilter}
                     />
                 );
             case 'Funding History':
