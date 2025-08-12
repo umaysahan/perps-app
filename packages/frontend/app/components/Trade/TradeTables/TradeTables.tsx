@@ -23,17 +23,17 @@ export interface FilterOption {
     label: string;
 }
 
-const tradePageBlackListTabs = new Set([
-    'Funding History',
-    'Deposits and Withdrawals',
-    'Depositors',
-]);
+// const tradePageBlackListTabs = new Set([
+//     'Funding History',
+//     'Deposits and Withdrawals',
+//     'Depositors',
+// ]);
 
-const portfolioPageBlackListTabs = new Set([
-    'Depositors',
-    'Funding History',
-    'Deposits and Withdrawals',
-]);
+// const portfolioPageBlackListTabs = new Set([
+//     'Depositors',
+//     'Funding History',
+//     'Deposits and Withdrawals',
+// ]);
 const filterOptions: FilterOption[] = [
     { id: 'all', label: 'All' },
     { id: 'active', label: 'Active' },
@@ -89,15 +89,15 @@ export default function TradeTable(props: TradeTableProps) {
             availableTabs.push('Depositors');
         }
 
-        if (page === Pages.TRADE) {
-            return availableTabs.filter(
-                (tab) => !tradePageBlackListTabs.has(tab),
-            );
-        } else if (page === Pages.PORTFOLIO) {
-            return availableTabs.filter(
-                (tab) => !portfolioPageBlackListTabs.has(tab),
-            );
-        }
+        // if (page === Pages.TRADE) {
+        //     return availableTabs.filter(
+        //         (tab) => !tradePageBlackListTabs.has(tab),
+        //     );
+        // } else if (page === Pages.PORTFOLIO) {
+        //     return availableTabs.filter(
+        //         (tab) => !portfolioPageBlackListTabs.has(tab),
+        //     );
+        // }
         return availableTabs;
     }, [page]);
 
@@ -127,17 +127,17 @@ export default function TradeTable(props: TradeTableProps) {
         }
     }, [isEstablished(sessionState)]);
 
-    useEffect(() => {
-        if (page === Pages.TRADE) {
-            if (tradePageBlackListTabs.has(selectedTradeTab)) {
-                handleTabChange('Positions');
-            }
-        } else if (page === Pages.PORTFOLIO) {
-            if (portfolioPageBlackListTabs.has(selectedTradeTab)) {
-                handleTabChange('Positions');
-            }
-        }
-    }, [page]);
+    // useEffect(() => {
+    //     if (page === Pages.TRADE) {
+    //         if (tradePageBlackListTabs.has(selectedTradeTab)) {
+    //             handleTabChange('Positions');
+    //         }
+    //     } else if (page === Pages.PORTFOLIO) {
+    //         if (portfolioPageBlackListTabs.has(selectedTradeTab)) {
+    //             handleTabChange('Positions');
+    //         }
+    //     }
+    // }, [page]);
 
     const {
         orderHistoryFetched,

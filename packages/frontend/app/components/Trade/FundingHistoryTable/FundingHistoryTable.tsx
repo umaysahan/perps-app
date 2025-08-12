@@ -3,10 +3,18 @@ import GenericTable from '~/components/Tables/GenericTable/GenericTable';
 import { sortUserFundings } from '~/processors/processUserFills';
 import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
-import type { UserFundingIF, UserFundingSortBy } from '~/utils/UserDataIFs';
-import FundingHistoryTableHeader from './FundingHistoryTableHeader';
+import type {
+    UserFillIF,
+    UserFillSortBy,
+    UserFundingIF,
+    UserFundingSortBy,
+} from '~/utils/UserDataIFs';
+import FundingHistoryTableHeader, {
+    FundingHistoryTableModel,
+} from './FundingHistoryTableHeader';
 import FundingHistoryTableRow from './FundingHistoryTableRow';
 import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
+import { useInfoApi } from '~/hooks/useInfoApi';
 
 interface FundingHistoryTableProps {
     userFundings: UserFundingIF[];
@@ -21,6 +29,8 @@ export default function FundingHistoryTable(props: FundingHistoryTableProps) {
     const { symbol } = useTradeDataStore();
 
     const { debugWallet } = useDebugStore();
+
+    const { fetchFundingHistory } = useInfoApi();
 
     const currentUserRef = useRef<string>('');
     currentUserRef.current = debugWallet.address;
@@ -48,7 +58,14 @@ export default function FundingHistoryTable(props: FundingHistoryTableProps) {
 
     return (
         <>
-            <GenericTable
+            <GenericTable<
+                UserFundingIF,
+                UserFundingSortBy,
+                (
+                    address: string,
+                    aggregateByTime: boolean,
+                ) => Promise<UserFundingIF[]>
+            >
                 storageKey={`FundingHistoryTable_${currentUserRef.current}`}
                 data={filteredData}
                 renderHeader={(sortDirection, sortClickHandler, sortBy) => (
@@ -70,6 +87,9 @@ export default function FundingHistoryTable(props: FundingHistoryTableProps) {
                 viewAllLink={viewAllLink}
                 skeletonRows={7}
                 skeletonColRatios={[1, 1, 1, 1, 1, 1]}
+                tableModel={FundingHistoryTableModel}
+                csvDataFetcher={fetchFundingHistory}
+                csvDataFetcherArgs={[debugWallet.address, true]}
             />
         </>
     );

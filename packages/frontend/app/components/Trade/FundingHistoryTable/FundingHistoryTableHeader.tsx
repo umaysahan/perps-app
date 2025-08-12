@@ -1,14 +1,8 @@
 import type { UserFundingSortBy } from '~/utils/UserDataIFs';
 import styles from './FundingHistoryTable.module.css';
 import SortIcon from '~/components/Vault/SortIcon';
-import type { TableSortDirection } from '~/utils/CommonIFs';
-
-export interface HeaderCell {
-    name: string;
-    key: string;
-    sortable: boolean;
-    className: string;
-}
+import type { HeaderCell, TableSortDirection } from '~/utils/CommonIFs';
+import { formatTimestamp } from '~/utils/orderbook/OrderBookUtils';
 
 interface FundingHistoryTableHeaderProps {
     sortBy?: UserFundingSortBy;
@@ -16,53 +10,82 @@ interface FundingHistoryTableHeaderProps {
     sortClickHandler: (key: UserFundingSortBy) => void;
 }
 
+export const FundingHistoryTableModel:
+    | HeaderCell<number>[]
+    | HeaderCell<string>[] = [
+    {
+        name: 'Time',
+        key: 'time',
+        sortable: true,
+        className: 'timeCell',
+        exportable: true,
+        exportAction: (data: number) => {
+            return formatTimestamp(data).replaceAll(';', ' ');
+        },
+    } as HeaderCell<number>,
+    {
+        name: 'Coin',
+        key: 'coin',
+        sortable: true,
+        className: 'coinCell',
+        exportable: true,
+    },
+    {
+        name: 'Size',
+        key: 'szi',
+        sortable: true,
+        className: 'sizeCell',
+        exportable: true,
+        exportAction: (v: number) => {
+            const str = v >= 1 ? v.toFixed(3) : v.toFixed(4);
+            return `="${str}"`;
+        },
+    },
+    {
+        name: 'Position Side',
+        key: 'szi',
+        sortable: false,
+        className: 'positionSideCell',
+        exportable: true,
+        exportAction: (v: number) =>
+            v > 0 ? 'Long' : v < 0 ? 'Short' : 'Neutral',
+
+        /* fundingHistory.szi > 0
+                            ? getBsColor().buy
+                            : fundingHistory.szi < 0
+                              ? getBsColor().sell
+                              : 'var(--text-default)',*/
+    },
+    {
+        name: 'Payment',
+        key: 'usdc',
+        sortable: true,
+        className: 'paymentCell',
+        exportable: true,
+        exportAction: (v: number) => {
+            return Number(v.toFixed(6)).toString();
+        },
+    },
+    {
+        name: 'Rate',
+        key: 'fundingRate',
+        sortable: true,
+        className: 'rateCell',
+        exportable: true,
+        exportAction: (v: number) => {
+            return Number(v.toFixed(6)).toString();
+        },
+    },
+];
+
 export default function FundingHistoryTableHeader(
     props: FundingHistoryTableHeaderProps,
 ) {
     const { sortBy, sortDirection, sortClickHandler } = props;
 
-    const tableHeaders: HeaderCell[] = [
-        {
-            name: 'Time',
-            key: 'time',
-            sortable: true,
-            className: 'timeCell',
-        },
-        {
-            name: 'Coin',
-            key: 'coin',
-            sortable: true,
-            className: 'coinCell',
-        },
-        {
-            name: 'Size',
-            key: 'szi',
-            sortable: true,
-            className: 'sizeCell',
-        },
-        {
-            name: 'Position Side',
-            key: 'positionSide',
-            sortable: false,
-            className: 'positionSideCell',
-        },
-        {
-            name: 'Payment',
-            key: 'usdc',
-            sortable: true,
-            className: 'paymentCell',
-        },
-        {
-            name: 'Rate',
-            key: 'fundingRate',
-            sortable: true,
-            className: 'rateCell',
-        },
-    ];
-
     return (
         <div className={styles.headerContainer}>
-            {tableHeaders.map((header) => (
+            {FundingHistoryTableModel.map((header) => (
                 <div
                     key={header.key}
                     className={`${styles.cell} ${styles.headerCell} ${styles[header.className]} ${header.sortable ? styles.sortable : ''}`}
