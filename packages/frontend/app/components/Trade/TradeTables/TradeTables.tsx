@@ -13,9 +13,9 @@ import FundingHistoryTable from '../FundingHistoryTable/FundingHistoryTable';
 import OpenOrdersTable from '../OpenOrdersTable/OpenOrdersTable';
 import OrderHistoryTable from '../OrderHistoryTable/OrderHistoryTable';
 import PositionsTable from '../PositionsTable/PositionsTable';
-import ToggleSwitch from '../ToggleSwitch/ToggleSwitch';
 import TradeHistoryTable from '../TradeHistoryTable/TradeHistoryTable';
-import TwapTable from '../TwapTable/TwapTable';
+// import TwapTable from '../TwapTable/TwapTable';
+import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
 import VaultDepositorsTable from '../VaultDepositorsTable/VaultDepositorsTable';
 import styles from './TradeTable.module.css';
 export interface FilterOption {
@@ -29,8 +29,11 @@ const tradePageBlackListTabs = new Set([
     'Depositors',
 ]);
 
-const portfolioPageBlackListTabs = new Set(['Depositors']);
-
+const portfolioPageBlackListTabs = new Set([
+    'Depositors',
+    'Funding History',
+    'Deposits and Withdrawals',
+]);
 const filterOptions: FilterOption[] = [
     { id: 'all', label: 'All' },
     { id: 'active', label: 'Active' },
@@ -47,6 +50,7 @@ interface TradeTableProps {
 
 export default function TradeTable(props: TradeTableProps) {
     const { portfolioPage, vaultPage, vaultFetched, vaultDepositors } = props;
+
     const {
         selectedTradeTab,
         setSelectedTradeTab,
@@ -55,11 +59,15 @@ export default function TradeTable(props: TradeTableProps) {
         userFills,
         userFundings,
         userOrders,
+        resetUserData,
     } = useTradeDataStore();
+
     const [selectedFilter, setSelectedFilter] = useState<string>('all');
-    const [hideSmallBalances, setHideSmallBalances] = useState(false);
+    // const [hideSmallBalances, setHideSmallBalances] = useState(false);
 
     const { page } = usePage();
+
+    const sessionState = useSession();
 
     const { debugWallet, setDebugWallet } = useDebugStore();
 
@@ -70,7 +78,7 @@ export default function TradeTable(props: TradeTableProps) {
             'Balances',
             'Positions',
             'Open Orders',
-            'TWAP',
+            // 'TWAP',
             'Trade History',
             'Funding History',
             'Order History',
@@ -104,6 +112,20 @@ export default function TradeTable(props: TradeTableProps) {
             setDebugWallet(debugWallets[0]);
         }
     }, [vaultPage]);
+
+    useEffect(() => {
+        if (isEstablished(sessionState)) {
+            // if wallet public key starts with alpha char, use debug wallet 1, else use debug wallet 2
+            setDebugWallet(
+                sessionState.walletPublicKey.toString().match(/^[a-zA-Z]/)
+                    ? debugWallets[0]
+                    : debugWallets[1],
+            );
+        } else {
+            setDebugWallet(debugWallets[2]); // set to empty account
+            resetUserData();
+        }
+    }, [isEstablished(sessionState)]);
 
     useEffect(() => {
         if (page === Pages.TRADE) {
@@ -143,36 +165,24 @@ export default function TradeTable(props: TradeTableProps) {
         setSelectedFilter(selectedId);
     };
 
-    const handleToggleSmallBalances = (newState?: boolean) => {
-        const newValue = newState !== undefined ? newState : !hideSmallBalances;
-        setHideSmallBalances(newValue);
-    };
-
     const rightAlignedContent = (
         <div className={styles.tableControls}>
-            {' '}
             <FilterDropdown
                 options={filterOptions}
                 selectedOption={selectedFilter}
                 onChange={handleFilterChange}
             />
-            {selectedTradeTab === 'Balances' && (
-                <ToggleSwitch
-                    isOn={hideSmallBalances}
-                    onToggle={handleToggleSmallBalances}
-                />
-            )}
         </div>
     );
 
     const renderTabContent = () => {
         switch (selectedTradeTab) {
             case 'Balances':
-                return <BalancesTable hideSmallBalances={hideSmallBalances} />;
+                return <BalancesTable />;
             case 'Positions':
                 return (
                     <PositionsTable
-                        isFetched={tradeHistoryFetched}
+                        isFetched={webDataFetched}
                         selectedFilter={selectedFilter}
                     />
                 );
@@ -184,8 +194,8 @@ export default function TradeTable(props: TradeTableProps) {
                         data={userOrders}
                     />
                 );
-            case 'TWAP':
-                return <TwapTable selectedFilter={selectedFilter} />;
+            // case 'TWAP':
+            //     return <TwapTable selectedFilter={selectedFilter} />;
             case 'Trade History':
                 return (
                     <TradeHistoryTable

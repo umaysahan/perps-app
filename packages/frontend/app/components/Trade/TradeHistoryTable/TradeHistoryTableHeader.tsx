@@ -20,7 +20,7 @@ export const TradeHistoryTableModel:
         className: 'timeCell',
         exportable: true,
         exportAction: (data: number) => {
-            return formatTimestamp(data).replaceAll(',', ' ');
+            return formatTimestamp(data).replaceAll(';', ' ');
         },
     } as HeaderCell<number>,
     {
@@ -43,6 +43,9 @@ export const TradeHistoryTableModel:
         sortable: true,
         className: 'priceCell',
         exportable: true,
+        exportAction: (v: number) => {
+            return Number(v.toFixed(4)).toString();
+        },
     },
     {
         name: 'Size',
@@ -50,6 +53,10 @@ export const TradeHistoryTableModel:
         sortable: true,
         className: 'sizeCell',
         exportable: true,
+        exportAction: (v: number) => {
+            const str = v >= 1 ? v.toFixed(2) : v.toFixed(4);
+            return `="${str}"`;
+        },
     },
     {
         name: 'Trade Value',
@@ -57,6 +64,7 @@ export const TradeHistoryTableModel:
         sortable: true,
         className: 'tradeValueCell',
         exportable: true,
+        exportAction: (v: number) => `="${v.toFixed(2)}"`,
     },
     {
         name: 'Fee',
@@ -64,6 +72,9 @@ export const TradeHistoryTableModel:
         sortable: true,
         className: 'feeCell',
         exportable: true,
+        exportAction: (v: number) => {
+            return Number(v.toFixed(4)).toString();
+        },
     },
     {
         name: 'Closed PNL',
@@ -71,6 +82,9 @@ export const TradeHistoryTableModel:
         sortable: true,
         className: 'closedPnlCell',
         exportable: true,
+        exportAction: (v: number) => {
+            return Number(v.toFixed(4)).toString();
+        },
     },
 ];
 

@@ -7,18 +7,10 @@ import { WsChannels } from '~/utils/Constants';
 import BalancesTableHeader from './BalancesTableHeader';
 import BalancesTableRow from './BalancesTableRow';
 
-type BalancesTableProps = {
-    hideSmallBalances: boolean;
-};
-
-export default function BalancesTable(props: BalancesTableProps) {
+export default function BalancesTable() {
     const { debugWallet } = useDebugStore();
     const currentUserRef = useRef<string>('');
     currentUserRef.current = debugWallet.address;
-
-    const { hideSmallBalances } = props;
-
-    const smallBalanceThreshold = 10;
 
     const { userBalances, fetchedChannels } = useTradeDataStore();
 
@@ -26,19 +18,10 @@ export default function BalancesTable(props: BalancesTableProps) {
         return fetchedChannels.has(WsChannels.WEB_DATA2);
     }, [fetchedChannels]);
 
-    const balancesToShow = useMemo(() => {
-        if (hideSmallBalances) {
-            return userBalances.filter((balance) => {
-                return balance.usdcValue > smallBalanceThreshold;
-            });
-        }
-        return userBalances;
-    }, [userBalances, hideSmallBalances]);
-
     return (
         <GenericTable
             storageKey={`BalancesTable_${currentUserRef.current}`}
-            data={balancesToShow}
+            data={userBalances.filter((balance) => balance.type === 'margin')}
             renderHeader={(sortDirection, sortClickHandler, sortBy) => (
                 <BalancesTableHeader
                     sortBy={sortBy}

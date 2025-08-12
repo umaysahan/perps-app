@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { HorizontalScrollable } from '~/components/Wrappers/HorizontanScrollable/HorizontalScrollable';
 import useNumFormatter from '~/hooks/useNumFormatter';
@@ -16,6 +16,20 @@ const SymbolInfo: React.FC = React.memo(() => {
     const { orderBookMode } = useAppSettings();
     const { marketId } = useParams<{ marketId: string }>();
     const { titleOverride } = useAppStateStore();
+
+    // State for funding countdown
+    const [fundingCountdown, setFundingCountdown] = useState(
+        getTimeUntilNextHour(),
+    );
+
+    // Update funding countdown every second
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setFundingCountdown(getTimeUntilNextHour());
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     // Memoize 24h change string and usdChange
     const changeData = useMemo(() => {
@@ -64,11 +78,8 @@ const SymbolInfo: React.FC = React.memo(() => {
                 <div>
                     {symbolInfo && symbolInfo.coin === symbol ? (
                         <HorizontalScrollable
-                            className={
-                                orderBookMode === 'large'
-                                    ? styles.symbolInfoLimitorNarrow
-                                    : styles.symbolInfoLimitor
-                            }
+                            excludes={['tutorial-pool-explorer']}
+                            wrapperId='trade-page-left-section'
                         >
                             <div
                                 className={`${styles.symbolInfoFieldsWrapper} ${orderBookMode === 'large' ? styles.symbolInfoFieldsWrapperNarrow : ''}`}
@@ -137,7 +148,7 @@ const SymbolInfo: React.FC = React.memo(() => {
                                     tooltipContent='tooltip content'
                                     label='Funding Countdown'
                                     valueClass={'w7'}
-                                    value={getTimeUntilNextHour()}
+                                    value={fundingCountdown}
                                 />
                             </div>
                         </HorizontalScrollable>

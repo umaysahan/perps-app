@@ -152,7 +152,9 @@ const TabChartContext: React.FC<TabChartContext> = (props) => {
                 />
             )}
 
-            {activeTab === 'Collateral' && <CollateralPieChart />}
+            {activeTab === 'Collateral' && (
+                <CollateralPieChart height={chartHeight} width={chartWidth} />
+            )}
         </div>
     );
 };

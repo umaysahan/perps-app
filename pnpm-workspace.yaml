@@ -1,2 +1,8 @@
 packages:
-    - 'packages/*'
+    - packages/*
+
+onlyBuiltDependencies:
+    - blake-hash
+    - protobufjs
+    - tiny-secp256k1
+    - usb

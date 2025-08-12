@@ -225,6 +225,7 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background: var(--bg-dark1);
+    overflow-y: hidden;
 }
 body,
 h1,

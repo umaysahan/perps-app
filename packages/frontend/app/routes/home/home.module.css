@@ -269,3 +269,8 @@
         transform: scale(1.02);
     }
 }
+
+.me {
+    display: flex;
+    flex-direction: column;
+}

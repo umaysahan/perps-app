@@ -5,7 +5,16 @@ import styles from './CollateralPieChart.module.css';
 
 type PieData = { label: string; value: number };
 
-const CollateralPieChart: React.FC = () => {
+type PieChartProps = {
+    height?: number;
+    width?: number;
+};
+
+const CollateralPieChart: React.FC<PieChartProps> = (props) => {
+    const { height, width } = props;
+
+    const chartHeight = height || 250;
+
     const pieData: PieData[] = [
         { label: 'UPnL', value: 20 },
         { label: 'USDC', value: 36 },
@@ -93,7 +102,11 @@ const CollateralPieChart: React.FC = () => {
         <div className={styles.collateralChartContainer}>
             <div className={styles.dataContainer}>
                 <div className={styles.dataLabel}>
-                    <canvas id='pie-canvas' width='250' height='250'></canvas>
+                    <canvas
+                        id='pie-canvas'
+                        width={Math.max(Math.min(chartHeight, 250), 150)}
+                        height={Math.max(Math.min(chartHeight, 250), 150)}
+                    ></canvas>
                 </div>
                 {legend}
             </div>

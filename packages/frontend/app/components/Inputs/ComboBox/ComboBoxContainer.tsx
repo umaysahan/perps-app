@@ -1,3 +1,5 @@
+import { instructions } from '@crocswap-libs/ambient-ember';
+import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
 import { useRef } from 'react';
 import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
@@ -30,6 +32,8 @@ export default function ComboBoxContainer() {
     // }, []);
 
     const currencies = ['USD', 'BTC', 'ETH'];
+
+    const sessionState = useSession();
 
     return (
         <section className={styles.comboBoxContainers}>
@@ -88,11 +92,9 @@ export default function ComboBoxContainer() {
                 onClick={() => setIsWsSleepMode(!isWsSleepMode)}
             >
                 <div className={styles.wsToggleButton}>
-                    {' '}
                     {isWsSleepMode ? 'WS Sleep' : 'WS Sleep'}
                 </div>
             </div>
-
             <div
                 className={`${styles.sdkToggle} ${sdkEnabled ? styles.active : styles.disabled}`}
                 onClick={() => setSdkEnabled(!sdkEnabled)}
@@ -101,6 +103,30 @@ export default function ComboBoxContainer() {
                     {sdkEnabled ? 'SDK' : 'SDK'}
                 </div>
             </div>
+            {isEstablished(sessionState) && (
+                <button
+                    onClick={() => {
+                        (async () => {
+                            if (isEstablished(sessionState)) {
+                                console.log('established');
+                                const userWalletKey =
+                                    sessionState.walletPublicKey ||
+                                    sessionState.sessionPublicKey;
+                                const ix = instructions.pingIx(42n, {
+                                    actor: sessionState.sessionPublicKey,
+                                    target: userWalletKey,
+                                });
+                                console.log({ ix, sessionState });
+                                const result =
+                                    await sessionState.sendTransaction([ix]);
+                                console.log({ result });
+                            }
+                        })();
+                    }}
+                >
+                    Ping
+                </button>
+            )}
         </section>
     );
 }

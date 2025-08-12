@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
 import { useCallback, useEffect, useRef } from 'react';
 import type { TransactionData } from '~/components/Trade/DepositsWithdrawalsTable/DepositsWithdrawalsTableRow';
 import { useSdk } from '~/hooks/useSdk';
@@ -33,6 +34,8 @@ export default function WebDataConsumer() {
         setFavCoins,
         setUserOrders,
         symbol,
+        symbolInfo,
+        setSymbolInfo,
         setCoins,
         coins,
         setPositions,
@@ -55,10 +58,11 @@ export default function WebDataConsumer() {
     const favKeysRef = useRef<string[]>(null);
     favKeysRef.current = favKeys;
 
+    const sessionState = useSession();
+
     const { debugWallet } = useDebugStore();
     const addressRef = useRef<string>(null);
     addressRef.current = debugWallet?.address?.toLowerCase();
-    const { setSymbolInfo } = useTradeDataStore();
 
     const openOrdersRef = useRef<OrderDataIF[]>([]);
     const positionsRef = useRef<PositionIF[]>([]);
@@ -84,6 +88,27 @@ export default function WebDataConsumer() {
         }
     }, [symbol, coins]);
 
+    // Add a periodic check to ensure symbolInfo stays updated
+    useEffect(() => {
+        const updateInterval = setInterval(() => {
+            const foundCoin = coins.find((coin) => coin.coin === symbol);
+            if (foundCoin && symbolInfo) {
+                // Only update if data has actually changed to avoid unnecessary re-renders
+                if (
+                    foundCoin.markPx !== symbolInfo.markPx ||
+                    foundCoin.oraclePx !== symbolInfo.oraclePx ||
+                    foundCoin.dayNtlVlm !== symbolInfo.dayNtlVlm ||
+                    foundCoin.funding !== symbolInfo.funding ||
+                    foundCoin.openInterest !== symbolInfo.openInterest
+                ) {
+                    setSymbolInfo(foundCoin);
+                }
+            }
+        }, 1000);
+
+        return () => clearInterval(updateInterval);
+    }, [symbol, coins, symbolInfo, setSymbolInfo]);
+
     useEffect(() => {
         if (!info) return;
         setFetchedChannels(new Set());
@@ -91,6 +116,7 @@ export default function WebDataConsumer() {
         setUserOrders([]);
         setUserSymbolOrders([]);
         setPositions([]);
+        setUserBalances([]);
         positionsRef.current = [];
         openOrdersRef.current = [];
         userFundingsRef.current = [];
@@ -98,10 +124,29 @@ export default function WebDataConsumer() {
         setUserNonFundingLedgerUpdates([]);
         userNonFundingLedgerUpdatesRef.current = [];
 
+        // Subscribe to webData2 on user socket for user-specific data
         const { unsubscribe } = info.subscribe(
             { type: WsChannels.WEB_DATA2, user: debugWallet.address },
             postWebData2,
         );
+
+        // Also subscribe to webData2 on market socket for market data
+        // This ensures market data comes from the market endpoint even when user endpoint is different
+        let unsubscribeMarketData: (() => void) | undefined;
+        if (info.multiSocketInfo) {
+            const marketSocket = info.multiSocketInfo.getMarketSocket();
+            if (marketSocket) {
+                const marketDataCallback = (msg: any) => {
+                    // Only process market data from this subscription
+                    postWebData2MarketOnly(msg);
+                };
+                const result = marketSocket.subscribe(
+                    { type: WsChannels.WEB_DATA2, user: debugWallet.address },
+                    marketDataCallback,
+                );
+                unsubscribeMarketData = result.unsubscribe;
+            }
+        }
 
         const { unsubscribe: unsubscribeOrderHistory } = info.subscribe(
             {
@@ -170,7 +215,9 @@ export default function WebDataConsumer() {
 
         return () => {
             clearInterval(userDataInterval);
+            // clearInterval(monitorInterval);
             unsubscribe();
+            unsubscribeMarketData?.();
             unsubscribeOrderHistory();
             unsubscribeUserFills();
             unsubscribeUserTwapSliceFills();
@@ -184,11 +231,25 @@ export default function WebDataConsumer() {
         acccountOverviewPrevRef.current = accountOverview;
     }, [accountOverview]);
 
+    const lastDataTimestampRef = useRef<number>(Date.now());
+
     const handleWebData2WorkerResult = useCallback(
         ({ data }: { data: WebData2Output }) => {
-            setCoins(data.data.coins);
-            setCoinPriceMap(data.data.coinPriceMap);
-            if (data.data.user?.toLowerCase() === addressRef.current) {
+            // Update last data timestamp
+            lastDataTimestampRef.current = Date.now();
+
+            // When using multi-socket mode, market data comes from market socket
+            // So we only process user data from the user socket's webData2
+            if (!info?.multiSocketInfo) {
+                // Legacy mode: process all data from single socket
+                setCoins(data.data.coins);
+                setCoinPriceMap(data.data.coinPriceMap);
+            }
+
+            if (
+                isEstablished(sessionState) &&
+                data.data.user?.toLowerCase() === addressRef.current
+            ) {
                 openOrdersRef.current = data.data.userOpenOrders;
                 positionsRef.current = data.data.positions;
                 userBalancesRef.current = data.data.userBalances;
@@ -197,7 +258,7 @@ export default function WebDataConsumer() {
             }
             fetchedChannelsRef.current.add(WsChannels.WEB_DATA2);
         },
-        [setCoins, setCoinPriceMap],
+        [setCoins, setCoinPriceMap, info?.multiSocketInfo, sessionState],
     );
 
     const postWebData2 = useWorker<WebData2Output>(
@@ -205,14 +266,32 @@ export default function WebDataConsumer() {
         handleWebData2WorkerResult,
     );
 
+    // Handler for market-only data from market socket
+    const handleWebData2MarketOnlyResult = useCallback(
+        ({ data }: { data: WebData2Output }) => {
+            // Update last data timestamp
+            lastDataTimestampRef.current = Date.now();
+
+            // Only update market data (coins and price map)
+            // This ensures market data always comes from the market endpoint
+            setCoins(data.data.coins);
+            setCoinPriceMap(data.data.coinPriceMap);
+        },
+        [setCoins, setCoinPriceMap],
+    );
+
+    const postWebData2MarketOnly = useWorker<WebData2Output>(
+        'webData2',
+        handleWebData2MarketOnlyResult,
+    );
+
     const postUserHistoricalOrders = useCallback((payload: any) => {
         const data = payload.data;
         if (
             data &&
             data.orderHistory &&
-            data.orderHistory.length > 0 &&
             data.user &&
-            data.user?.toLowerCase() === addressRef.current?.toLocaleLowerCase()
+            data.user?.toLowerCase() === addressRef.current?.toLowerCase()
         ) {
             const orders: OrderDataIF[] = [];
             data.orderHistory.forEach((order: any) => {
@@ -245,7 +324,7 @@ export default function WebDataConsumer() {
         if (
             data &&
             data.user &&
-            data.user?.toLowerCase() === addressRef.current?.toLocaleLowerCase()
+            data.user?.toLowerCase() === addressRef.current?.toLowerCase()
         ) {
             const fills = processUserFills(data);
             fills.sort((a, b) => b.time - a.time);
@@ -263,7 +342,7 @@ export default function WebDataConsumer() {
         if (
             data &&
             data.user &&
-            data.user?.toLowerCase() === addressRef.current?.toLocaleLowerCase()
+            data.user?.toLowerCase() === addressRef.current?.toLowerCase()
         ) {
             const fills = processUserTwapSliceFills(data);
             if (data.isSnapshot) {
@@ -283,7 +362,7 @@ export default function WebDataConsumer() {
         if (
             data &&
             data.user &&
-            data.user?.toLowerCase() === addressRef.current?.toLocaleLowerCase()
+            data.user?.toLowerCase() === addressRef.current?.toLowerCase()
         ) {
             const history = processUserTwapHistory(data);
             if (data.isSnapshot) {
@@ -303,7 +382,7 @@ export default function WebDataConsumer() {
         if (
             data &&
             data.user &&
-            data.user?.toLowerCase() === addressRef.current?.toLocaleLowerCase()
+            data.user?.toLowerCase() === addressRef.current?.toLowerCase()
         ) {
             const fundings = processUserFundings(data.fundings);
             fundings.sort((a, b) => b.time - a.time);
@@ -357,6 +436,25 @@ export default function WebDataConsumer() {
             setFavCoins(favs);
         }
     }, [favKeys, coins]);
+
+    const resetRefs = useCallback(() => {
+        openOrdersRef.current = [];
+        positionsRef.current = [];
+        userBalancesRef.current = [];
+        userOrderHistoryRef.current = [];
+        userFillsRef.current = [];
+        twapHistoryRef.current = [];
+        twapSliceFillsRef.current = [];
+        userFundingsRef.current = [];
+        activeTwapsRef.current = [];
+        userNonFundingLedgerUpdatesRef.current = [];
+    }, []);
+
+    useEffect(() => {
+        if (!isEstablished(sessionState)) {
+            resetRefs();
+        }
+    }, [isEstablished(sessionState)]);
 
     return <></>;
 }

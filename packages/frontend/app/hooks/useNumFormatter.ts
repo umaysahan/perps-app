@@ -96,9 +96,9 @@ export function useNumFormatter() {
             addPlusSignIfPositive: boolean = false,
             compact: boolean = false,
             compactThreshold: number = 10000,
+            removeTrailingZeros: boolean = false, // NEW PARAMETER
         ) => {
             const formatType = numFormat.value;
-
             let precisionVal = null;
 
             if (precision && typeof precision === 'object') {
@@ -114,10 +114,8 @@ export function useNumFormatter() {
             }
 
             const numValue = parseNum(num);
-
             let formattedNum = '';
 
-            // Use compact notation if requested and number exceeds threshold
             if (compact && Math.abs(numValue) >= compactThreshold) {
                 formattedNum = numValue.toLocaleString(formatType, {
                     notation: 'compact',
@@ -126,20 +124,37 @@ export function useNumFormatter() {
                     maximumFractionDigits: 1,
                 });
             } else {
-                // Use regular formatting
                 formattedNum = numValue.toLocaleString(formatType, {
                     minimumFractionDigits:
-                        precisionVal || getDefaultPrecision(num),
+                        precisionVal ?? getDefaultPrecision(num),
                     maximumFractionDigits:
-                        precisionVal || getDefaultPrecision(num),
+                        precisionVal ?? getDefaultPrecision(num),
                 });
 
-                // to handle if a static precision has given as parameter but its causing all zeros issue
                 if (isAllZeroFormatted(formattedNum)) {
                     formattedNum = numValue.toLocaleString(formatType, {
                         minimumFractionDigits: getDefaultPrecision(num),
                         maximumFractionDigits: getDefaultPrecision(num),
                     });
+                }
+            }
+
+            // 🔽 REMOVE TRAILING ZEROS IF FLAG IS SET
+            if (removeTrailingZeros && !compact) {
+                // Only apply to strings with decimal
+                if (formattedNum.includes(activeDecimalSeparator)) {
+                    formattedNum = formattedNum
+                        .replace(
+                            new RegExp(
+                                `(${activeDecimalSeparator}\d*?[1-9])0+$`,
+                                'g',
+                            ),
+                            '$1',
+                        )
+                        .replace(
+                            new RegExp(`(${activeDecimalSeparator})0+$`, 'g'),
+                            '',
+                        );
                 }
             }
 
@@ -193,14 +208,32 @@ export function useNumFormatter() {
     );
 
     const formatNumWithOnlyDecimals = useCallback(
-        (num: number, precision?: number) => {
+        (
+            num: number,
+            precision?: number,
+            trimTrailingZeros: boolean = false,
+        ): string => {
             const { group } = getSeparators(numFormat.value);
+            precision = precision ?? getPrecisionFromNumber(num);
 
-            precision = getPrecisionFromNumber(num);
+            let formattedNum = formatNum(num, precision);
 
-            const formattedNum = formatNum(num, precision);
+            // Remove group separators
+            formattedNum = formattedNum.replace(
+                new RegExp(`\\${group}`, 'g'),
+                '',
+            );
 
-            return formattedNum.replace(new RegExp(`\\${group}`, 'g'), '');
+            // Optionally remove trailing zeros in decimal part
+            if (trimTrailingZeros && formattedNum.includes('.')) {
+                // Remove trailing zeros after decimal point and optional trailing dot
+                formattedNum = formattedNum
+                    .replace(/(\.\d*?[1-9])0+$/g, '$1')
+                    .replace(/\.0+$/, '')
+                    .replace(/\.$/, '');
+            }
+
+            return formattedNum;
         },
         [formatNum, numFormat],
     );

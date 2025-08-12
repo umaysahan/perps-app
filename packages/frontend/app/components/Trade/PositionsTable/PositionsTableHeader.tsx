@@ -21,6 +21,8 @@ export default function PositionsTableHeader({
     sortDirection,
     sortClickHandler,
 }: PositionsTableHeaderProps) {
+    const showTpSl = false;
+
     const tableHeaders: HeaderCell[] = [
         {
             name: 'Coin',
@@ -76,12 +78,16 @@ export default function PositionsTableHeader({
             sortable: true,
             className: styles.fundingCell,
         },
-        {
-            name: 'TP/SL',
-            key: 'tpsl',
-            sortable: false,
-            className: styles.tpslCell,
-        },
+        ...(showTpSl
+            ? [
+                  {
+                      name: 'TP/SL',
+                      key: 'tpsl',
+                      sortable: false,
+                      className: styles.tpslCell,
+                  },
+              ]
+            : []),
         {
             name: 'Close',
             key: 'close',
@@ -91,7 +97,9 @@ export default function PositionsTableHeader({
     ];
 
     return (
-        <div className={styles.headerContainer}>
+        <div
+            className={`${styles.headerContainer} ${!showTpSl ? styles.noTpSl : ''}`}
+        >
             {tableHeaders.map((header) => (
                 <div
                     key={header.key}

@@ -1,6 +1,10 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ImSpinner8 } from 'react-icons/im';
-import { IoCheckmarkCircleOutline, IoClose } from 'react-icons/io5';
+import {
+    IoAlertCircleOutline,
+    IoCheckmarkCircleOutline,
+    IoClose,
+} from 'react-icons/io5';
 import { useAppSettings } from '~/stores/AppSettingsStore';
 import type { notificationIF } from '~/stores/NotificationStore';
 import styles from './Notification.module.css';
@@ -90,6 +94,12 @@ export default function Notification(props: propsIF) {
                         <IoCheckmarkCircleOutline
                             size={ICON_SIZE}
                             color='var(--accent1)'
+                        />
+                    )}
+                    {data.icon === 'error' && (
+                        <IoAlertCircleOutline
+                            size={ICON_SIZE}
+                            color='var(--red)'
                         />
                     )}
                     <h2>{data.title}</h2>

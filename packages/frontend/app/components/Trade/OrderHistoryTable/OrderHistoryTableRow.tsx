@@ -3,6 +3,7 @@ import { useAppSettings } from '~/stores/AppSettingsStore';
 import type { OrderDataIF } from '~/utils/orderbook/OrderBookIFs';
 import { formatTimestamp } from '~/utils/orderbook/OrderBookUtils';
 import styles from './OrderHistoryTable.module.css';
+
 interface OrderHistoryTableRowProps {
     order: OrderDataIF;
 }
@@ -13,8 +14,12 @@ export default function OrderHistoryTableRow(props: OrderHistoryTableRowProps) {
     const { formatNum } = useNumFormatter();
     const { getBsColor } = useAppSettings();
 
+    const showTpSl = false;
+
     return (
-        <div className={styles.rowContainer}>
+        <div
+            className={`${styles.rowContainer} ${!showTpSl ? styles.noTpSl : ''}`}
+        >
             <div className={`${styles.cell} ${styles.timeCell}`}>
                 {formatTimestamp(order.timestamp)}
             </div>
@@ -50,14 +55,16 @@ export default function OrderHistoryTableRow(props: OrderHistoryTableRowProps) {
                 {order.limitPx ? formatNum(order.limitPx) : '--'}
             </div>
             <div className={`${styles.cell} ${styles.reduceOnlyCell}`}>
-                {order.reduceOnly}
+                {order.reduceOnly === false ? 'No' : 'Yes'}
             </div>
             <div className={`${styles.cell} ${styles.triggerConditionsCell}`}>
                 {order.triggerCondition}
             </div>
-            <div className={`${styles.cell} ${styles.tpslCell}`}>
-                {order.isTrigger ? formatNum(order.triggerPx || 0) : '--'}
-            </div>
+            {showTpSl && (
+                <div className={`${styles.cell} ${styles.tpslCell}`}>
+                    {order.isTrigger ? formatNum(order.triggerPx || 0) : '--'}
+                </div>
+            )}
             <div className={`${styles.cell} ${styles.statusCell}`}>
                 {order.status}
             </div>

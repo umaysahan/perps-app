@@ -20,14 +20,23 @@ function subscriptionToIdentifier(subscription: Subscription): string {
         case 'allMids':
             return 'allMids';
         case 'l2Book':
+            if (!subscription.coin) {
+                throw new Error('l2Book subscription requires coin');
+            }
             return `l2Book:${subscription.coin.toLowerCase()}`;
         case 'trades':
+            if (!subscription.coin) {
+                throw new Error('trades subscription requires coin');
+            }
             return `trades:${subscription.coin.toLowerCase()}`;
         case 'userEvents':
             return 'userEvents';
         case 'userFills':
             return `userFills:${subscription.user.toLowerCase()}`;
         case 'candle':
+            if (!subscription.coin) {
+                throw new Error('candle subscription requires coin');
+            }
             return `candle:${subscription.coin.toLowerCase()},${subscription.interval}`;
         case 'orderUpdates':
             return 'orderUpdates';

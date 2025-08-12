@@ -1,0 +1,247 @@
+:root {
+    --480-h2-fs: 2.25rem;
+    --480-h2-lh: 2.5rem;
+    --480-p-fs: 1.125rem;
+    --480-p-lh: 1.75rem;
+    --desktop-h2-fs: 4.5rem;
+    --desktop-h2-lh: normal;
+    --desktop-p-fs: 2.25rem;
+    --desktop-p-lh: normal;
+}
+
+.hero_container {
+    position: relative;
+    background: radial-gradient(
+        43.75% 50% at 0% 70%,
+        rgba(115, 113, 252, 0.2) 0%,
+        rgba(115, 113, 252, 0) 100%
+    );
+    max-width: 120rem;
+    margin: 0 auto;
+    padding: 0 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3rem;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Animated background container */
+.animated_background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Primary animation layer */
+.animated_path_primary {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Secondary animation layer */
+.animated_path_secondary {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.6;
+    transform: scale(1.1) rotate(2deg);
+}
+
+/* Tertiary animation layer */
+.animated_path_tertiary {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.4;
+    transform: scale(0.9) rotate(-1deg);
+}
+
+.hero_container h2,
+.hero_container h3,
+.hero_container p,
+.hero_container span {
+    z-index: 2;
+    position: relative;
+}
+
+.hero_container h2 {
+    color: var(--text1, #f0f0f8);
+    font-family: 'Lexend Deca';
+    font-size: var(--header1-size);
+    line-height: var(--header1-lh);
+    font-style: normal;
+    font-weight: 200;
+}
+
+.hero_container p {
+    color: var(--text2, #8b98a5);
+    font-family: 'Lexend Deca';
+    font-size: var(--header-size);
+    line-height: normal;
+    font-style: normal;
+    font-weight: 200;
+    letter-spacing: -0.72px;
+}
+
+.hero_container span {
+    color: var(--accent, #7371fc);
+}
+
+.hero_heading {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: start;
+}
+
+.hero_stats_container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.hero_stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+.hero_stats p {
+    font-size: 16px !important;
+}
+
+.hero_stats h2 {
+    font-size: 26px !important;
+}
+
+@media (min-width: 480px) {
+    .hero_stats_container {
+        gap: 2rem;
+    }
+
+    .hero_container h2 {
+        font-size: var(--480-h2-fs);
+        line-height: var(--480-h2-lh);
+    }
+
+    .hero_container p {
+        font-size: var(--480-p-fs);
+        line-height: var(--480-p-lh);
+    }
+}
+
+@media (min-width: 520px) {
+    .hero_stats_container {
+        margin: 0 auto;
+    }
+
+    .hero_stats h2 {
+        font-size: 36px !important;
+    }
+}
+
+@media (min-width: 740px) {
+    .hero_container {
+        padding: 48px 90px;
+    }
+}
+
+@media (min-width: 820px) {
+    .hero_container h2,
+    .hero_container p {
+        line-height: normal;
+    }
+}
+
+/* Key fix: Only adjust alignment on short screens */
+@media (max-height: 900px) {
+    .hero_container {
+        gap: 1.5rem;
+        /* Switch to flex-start on short screens to prevent top cutoff */
+        justify-content: flex-start;
+        padding-top: 2rem;
+        /* Allow container to expand beyond viewport height */
+        min-height: 100%;
+        height: auto;
+    }
+}
+
+/* Additional fix for very short screens */
+@media (max-height: 600px) {
+    .hero_container {
+        gap: 1rem;
+        padding-top: 1rem;
+        /* Ensure content can scroll on very short screens */
+        min-height: 100%;
+        height: auto;
+    }
+}
+
+@media (min-width: 1080px) {
+    .hero_container {
+        gap: 5rem;
+        padding: 48px 160px;
+    }
+
+    .hero_container p {
+        font-size: 27px;
+    }
+
+    .hero_stats_container {
+        gap: 81px;
+    }
+
+    .hero_stats {
+        min-width: 150px;
+        transition: all var(--animation-speed) ease-in-out;
+    }
+
+    .hero_stats p {
+        font-size: 16px !important;
+    }
+
+    .hero_stats h2 {
+        font-size: 36px !important;
+    }
+}
+
+@media (min-width: 1380px) {
+    .hero_container h2 {
+        font-size: 75px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .hero_container {
+        padding: 64px 214px;
+    }
+
+    .hero_container h2 {
+        font-size: 100px;
+    }
+}
+
+@media (max-height: 715px) {
+    .hero_container {
+        gap: 2rem;
+    }
+}

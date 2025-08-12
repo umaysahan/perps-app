@@ -1,3 +1,4 @@
+import type { MarginBucketInfo } from '@crocswap-libs/ambient-ember';
 import { OrderHistoryLimits, TradeHistoryLimits } from '~/utils/Constants';
 import type { OrderDataIF } from '~/utils/orderbook/OrderBookIFs';
 import type { PositionIF } from '~/utils/position/PositionIFs';
@@ -40,6 +41,7 @@ export interface UserTradeDataStore {
     setUserFundings: (userFundings: UserFundingIF[]) => void;
     activeTwaps: ActiveTwapIF[];
     setActiveTwaps: (activeTwaps: ActiveTwapIF[]) => void;
+    resetUserData: () => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,6 +66,10 @@ export const createUserTradesSlice = (set: any, get: any) => ({
                 (e) => e.coin === get().symbol,
             ),
         });
+    },
+    marginBucket: null,
+    setMarginBucket: (marginBucket: MarginBucketInfo | null) => {
+        set({ marginBucket });
     },
     filterOrderHistory: (orderHistory: OrderDataIF[], filterType?: string) => {
         if (!filterType) {
@@ -121,5 +127,28 @@ export const createUserTradesSlice = (set: any, get: any) => ({
     activeTwaps: [],
     setActiveTwaps: (activeTwaps: ActiveTwapIF[]) => {
         set({ activeTwaps });
+    },
+    resetUserData: () => {
+        set({
+            userOrders: [],
+            userSymbolOrders: [],
+            orderHistory: [],
+            positions: [],
+            userBalances: [],
+            accountOverview: {
+                balance: 0,
+                unrealizedPnl: 0,
+                crossMarginRatio: 0,
+                maintainanceMargin: 0,
+                crossAccountLeverage: 0,
+            },
+            userFills: [],
+            twapHistory: [],
+            twapSliceFills: [],
+            userFundings: [],
+            activeTwaps: [],
+            userSymbolOrderHistory: [],
+            marginBucket: null,
+        });
     },
 });

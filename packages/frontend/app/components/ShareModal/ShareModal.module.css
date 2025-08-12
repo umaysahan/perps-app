@@ -97,6 +97,7 @@
 .custom_text {
     display: flex;
     flex-direction: column;
+    gap: var(--gap-xs);
 }
 
 .custom_text > label {

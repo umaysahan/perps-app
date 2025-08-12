@@ -3,8 +3,10 @@ import useNumFormatter from '~/hooks/useNumFormatter';
 import styles from './NumFormattedInput.module.css';
 
 interface NumFormattedInputProps {
+    id?: string;
     value: string;
     onChange: (event: React.ChangeEvent<HTMLInputElement> | string) => void;
+    onFocus?: () => void;
     onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
     onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
     className?: string;
@@ -13,8 +15,10 @@ interface NumFormattedInputProps {
 }
 
 const NumFormattedInput: React.FC<NumFormattedInputProps> = ({
+    id,
     value,
     onChange,
+    onFocus,
     onBlur,
     onKeyDown,
     className,
@@ -50,7 +54,7 @@ const NumFormattedInput: React.FC<NumFormattedInputProps> = ({
     );
 
     useEffect(() => {
-        if (!value || value.length === 0) {
+        if (!value) {
             valueNum.current = null;
             return;
         }
@@ -60,9 +64,11 @@ const NumFormattedInput: React.FC<NumFormattedInputProps> = ({
     return (
         <>
             <input
+                {...(id && { id })}
                 type='text'
                 value={value}
                 onChange={handleChange}
+                onFocus={onFocus}
                 onBlur={onBlur}
                 onKeyDown={onKeyDown}
                 className={styles.numFormattedInput + ' ' + className}

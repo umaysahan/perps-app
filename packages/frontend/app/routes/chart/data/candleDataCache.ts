@@ -5,8 +5,11 @@ import {
     mapResolutionToInterval,
     resolutionToSeconds,
 } from './utils/utils';
+import type { Bar } from '~/tv/charting_library';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const dataCache = new Map<string, any[]>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const dataCacheWithUser = new Map<string, { user: string; dataCache: any[] }>();
 
 export async function getHistoricalData(
@@ -29,30 +32,62 @@ export async function getHistoricalData(
             (bar) => bar.time >= from * 1000 && bar.time <= to * 1000,
         );
     }
-    let mergedData = undefined;
 
     const period = mapResolutionToInterval(resolution);
-    return await fetchCandles(symbol, period, from, to).then((res: any) => {
-        if (res) {
-            const formattedData = res.map((item: any) => ({
-                time: item.t,
-                open: Number(item.o),
-                high: Number(item.h),
-                low: Number(item.l),
-                close: Number(item.c),
-                volume: Number(item.v),
-            }));
+    const data = await fetchCandles(symbol, period, from, to).then(
+        (res: any) => {
+            if (res) {
+                const formattedData = res.map((item: any) => ({
+                    time: item.t,
+                    open: Number(item.o),
+                    high: Number(item.h),
+                    low: Number(item.l),
+                    close: Number(item.c),
+                    volume: Number(item.v),
+                }));
 
-            mergedData = [...cachedData, ...formattedData].sort(
-                (a, b) => a.time - b.time,
-            );
-            dataCache.set(key, mergedData);
+                for (const newBar of formattedData) {
+                    const index = cachedData.findIndex(
+                        (bar) => bar.time === newBar.time,
+                    );
 
-            return mergedData.filter(
-                (bar) => bar.time >= from * 1000 && bar.time <= to * 1000,
-            );
-        }
-    });
+                    if (index > -1) {
+                        cachedData[index] = newBar;
+                    } else {
+                        cachedData.push(newBar);
+                    }
+                }
+
+                dataCache.set(key, cachedData);
+                const filteredCandle = cachedData.filter(
+                    (bar) => bar.time >= from * 1000 && bar.time <= to * 1000,
+                );
+                return filteredCandle.sort((a, b) => a.time - b.time);
+            }
+        },
+    );
+
+    return data;
+}
+
+export function updateCandleCache(
+    symbol: string,
+    resolution: string,
+    tick: Bar,
+) {
+    const key = `${symbol}-${resolution}`;
+    const cachedData = dataCache.get(key) || [];
+    const tickTime = tick.time;
+
+    const lastIndex = cachedData.findIndex((b) => b.time === tickTime);
+
+    if (lastIndex > -1) {
+        cachedData[lastIndex] = { ...cachedData[lastIndex], ...tick };
+    } else {
+        cachedData.push(tick);
+    }
+
+    dataCache.set(key, cachedData);
 }
 
 export async function getMarkFillData(coin: string, user?: string) {
@@ -90,6 +125,37 @@ export async function getMarkFillData(coin: string, user?: string) {
     }
 
     return [];
+}
+
+export function updateMarkDataWithSubscription(
+    coin: string,
+    newMarks: any[],
+    user: string,
+) {
+    const cacheKey = `${coin}-fillData`;
+
+    const cachedData = dataCacheWithUser.get(cacheKey);
+
+    if (cachedData) {
+        const existingMarks = cachedData.dataCache;
+
+        newMarks.forEach((newMark) => {
+            const exists = existingMarks.some(
+                (oldMark) => oldMark.oid === newMark.oid,
+            );
+
+            if (!exists) {
+                existingMarks.push(newMark);
+            }
+        });
+
+        const fetchedDataWithUser = {
+            user: user,
+            dataCache: existingMarks,
+        };
+
+        dataCacheWithUser.set(cacheKey, fetchedDataWithUser);
+    }
 }
 
 export function getMarkColorData() {

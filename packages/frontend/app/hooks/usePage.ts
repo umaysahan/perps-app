@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useIsClient } from './useIsClient';
 
 export enum Pages {
+    HOME = 'home',
     TRADE = 'trade',
     PORTFOLIO = 'portfolio',
     VAULTS = 'vaults',
@@ -18,6 +19,7 @@ export function usePage() {
         if (isClient) {
             const path = window.location.pathname;
             const parts = path.split('/');
+
             // Check for /v2/{page}
             if (parts.length > 2 && parts[1] === 'v2') {
                 const pageSegment = parts[2];
@@ -28,6 +30,8 @@ export function usePage() {
                 } else if (pageSegment === Pages.VAULTS) {
                     setPage(Pages.VAULTS);
                 }
+            } else if (parts.length === 2 && parts[1] === '') {
+                setPage(Pages.HOME);
             }
         }
     }, [isClient]);

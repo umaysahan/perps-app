@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useMobile } from '~/hooks/useMediaQuery';
+import { useAppStateStore } from '~/stores/AppStateStore';
 
 const TradingViewChart = () => {
     const isMobile = useMobile(768);
 
     const [chartHeight, setChartHeight] = useState(400);
+    const { debugToolbarOpen } = useAppStateStore();
 
     const assignChartHeight = () => {
         const chartSection = document.getElementById('chartSection');
@@ -23,6 +25,10 @@ const TradingViewChart = () => {
             window.removeEventListener('resize', assignChartHeight);
         };
     }, []);
+
+    useEffect(() => {
+        assignChartHeight();
+    }, [debugToolbarOpen]);
 
     return (
         <div

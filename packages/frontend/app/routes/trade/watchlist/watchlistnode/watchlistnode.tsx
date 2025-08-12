@@ -4,6 +4,7 @@ import useNumFormatter from '~/hooks/useNumFormatter';
 import { useAppSettings } from '~/stores/AppSettingsStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import styles from './watchlistnode.module.css';
+import Tooltip from '~/components/Tooltip/Tooltip';
 
 interface WatchListNodeProps {
     coin: string;
@@ -11,10 +12,11 @@ interface WatchListNodeProps {
     prevDayPx: number;
     isActive: boolean;
     showMode: 'dollar' | 'percent';
+    disabled?: boolean;
 }
 
 const WatchListNode: React.FC<WatchListNodeProps> = memo(
-    ({ coin, markPx, prevDayPx, isActive, showMode }) => {
+    ({ coin, markPx, prevDayPx, isActive, showMode, disabled }) => {
         const navigate = useNavigate();
         const { formatNum } = useNumFormatter();
         const { symbol: storeSymbol, setSymbol: setStoreSymbol } =
@@ -25,7 +27,7 @@ const WatchListNode: React.FC<WatchListNodeProps> = memo(
 
         const nodeClickListener = useMemo(
             () => () => {
-                if (coin === storeSymbol) return;
+                if (coin === storeSymbol || disabled) return;
                 setStoreSymbol(coin);
                 navigate(`/v2/trade/${coin}`, { viewTransition: true });
             },
@@ -51,20 +53,24 @@ const WatchListNode: React.FC<WatchListNodeProps> = memo(
         );
 
         return (
-            <div className={styles.watchListNodeContainer}>
+            <Tooltip position='top' content={disabled ? 'Coming Soon' : ''}>
                 <div
-                    className={`${styles.watchListNodeContent} ${isActive ? styles.active : ''}`}
-                    onClick={nodeClickListener}
+                    className={`${styles.watchListNodeContainer} ${disabled ? styles.disabled : ''}`}
                 >
-                    <div className={styles.symbolName}>{coin}-USD</div>
                     <div
-                        className={styles.symbolValue}
-                        style={{ color, width: `${shownVal.length * 7}px` }}
+                        className={`${styles.watchListNodeContent} ${isActive ? styles.active : ''}`}
+                        onClick={nodeClickListener}
                     >
-                        {shownVal}
+                        <div className={styles.symbolName}>{coin}-USD</div>
+                        <div
+                            className={styles.symbolValue}
+                            style={{ color, width: `${shownVal.length * 7}px` }}
+                        >
+                            {shownVal}
+                        </div>
                     </div>
                 </div>
-            </div>
+            </Tooltip>
         );
     },
     (prev, next) =>

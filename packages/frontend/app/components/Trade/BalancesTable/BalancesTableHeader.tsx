@@ -1,8 +1,8 @@
-import { useTradeDataStore } from '~/stores/TradeDataStore';
-import styles from './BalancesTable.module.css';
 import SortIcon from '~/components/Vault/SortIcon';
+import { useTradeDataStore } from '~/stores/TradeDataStore';
 import type { TableSortDirection } from '~/utils/CommonIFs';
 import type { UserBalanceSortBy } from '~/utils/UserDataIFs';
+import styles from './BalancesTable.module.css';
 
 export interface HeaderCell {
     name: string;
@@ -23,6 +23,8 @@ export default function BalancesTableHeader({
     sortClickHandler,
 }: BalancesTableHeaderProps) {
     const { selectedCurrency } = useTradeDataStore();
+
+    const showSendButton = false;
 
     const tableHeaders: HeaderCell[] = [
         {
@@ -56,7 +58,7 @@ export default function BalancesTableHeader({
             className: styles.buyingPowerCell,
         },
         {
-            name: 'PNL (ROGER)',
+            name: 'PNL (ROE%)',
             key: 'pnlValue',
             sortable: true,
             className: styles.pnlCell,
@@ -67,16 +69,22 @@ export default function BalancesTableHeader({
             sortable: false,
             className: styles.contractCell,
         },
-        {
-            name: '',
-            key: 'action',
-            sortable: false,
-            className: styles.actionCell,
-        },
+        ...(showSendButton
+            ? [
+                  {
+                      name: '',
+                      key: 'action',
+                      sortable: false,
+                      className: styles.actionCell,
+                  },
+              ]
+            : []),
     ];
 
     return (
-        <div className={styles.headerContainer}>
+        <div
+            className={`${styles.headerContainer} ${!showSendButton ? styles.noSendButton : ''}`}
+        >
             {tableHeaders.map((header) => (
                 <div
                     key={header.key}

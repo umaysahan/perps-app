@@ -2,6 +2,7 @@ import useNumFormatter from '~/hooks/useNumFormatter';
 import { useAppSettings } from '~/stores/AppSettingsStore';
 import type { UserBalanceIF } from '~/utils/UserDataIFs';
 import styles from './BalancesTable.module.css';
+
 interface BalancesTableRowProps {
     balance: UserBalanceIF;
 }
@@ -10,8 +11,9 @@ export default function BalancesTableRow(props: BalancesTableRowProps) {
     const { balance } = props;
 
     const { formatNum } = useNumFormatter();
-
     const { getBsColor } = useAppSettings();
+
+    const showSendButton = false;
 
     const getPnlString = () => {
         if (balance.entryNtl > 0 && Math.abs(balance.pnlValue) > 0) {
@@ -21,7 +23,9 @@ export default function BalancesTableRow(props: BalancesTableRowProps) {
     };
 
     return (
-        <div className={styles.rowContainer}>
+        <div
+            className={`${styles.rowContainer} ${!showSendButton ? styles.noSendButton : ''}`}
+        >
             <div className={`${styles.cell} ${styles.coinCell}`}>
                 {balance.coin}
             </div>
@@ -53,9 +57,11 @@ export default function BalancesTableRow(props: BalancesTableRowProps) {
             <div className={`${styles.cell} ${styles.contractCell}`}>
                 {balance.coin}
             </div>
-            <div className={`${styles.cell} ${styles.actionCell}`}>
-                <button className={styles.sendButton}>Send</button>
-            </div>
+            {showSendButton && (
+                <div className={`${styles.cell} ${styles.actionCell}`}>
+                    <button className={styles.sendButton}>Send</button>
+                </div>
+            )}
         </div>
     );
 }

@@ -21,6 +21,12 @@
     padding: 0 var(--margin-s);
     border-radius: var(--radius-s);
 }
+
+.disabled .watchListNodeContent {
+    cursor: default;
+    color: var(--text2);
+}
+
 .watchListNodeContainer div {
     background-color: transparent !important;
 }
@@ -31,4 +37,8 @@
 
 .watchListNodeContent:not(.active):hover {
     background-color: var(--bg-dark3, #1c1c22) !important;
+}
+
+.disabled .watchListNodeContent:not(.active):hover {
+    background-color: transparent !important;
 }

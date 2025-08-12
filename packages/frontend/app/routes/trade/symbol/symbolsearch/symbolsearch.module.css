@@ -16,7 +16,7 @@
     user-select: none;
     min-width: var(--search-container-width);
     /* height: var(--search-container-height); */
-    cursor: pointer;
+    /* cursor: pointer; */
     padding: var(--padding-s);
     border-radius: var(--radius-s);
     height: 35px !important;

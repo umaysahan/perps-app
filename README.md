@@ -1,5 +1,12 @@
 # Perps App Monorepo
 
+## Getting Started on Local Instance
+
+1. Make sure you have pnpm package manager installed
+2. Run `git submodule update --init --recursive` to update
+3. **NOTE:** You'll need to request access to TradingView advanced charting library
+4. Run `pnpm dev` to launch a local host
+
 ## Setup
 
 ```bash

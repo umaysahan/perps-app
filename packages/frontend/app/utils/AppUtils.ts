@@ -10,3 +10,13 @@ export const setLS = (key: string, value: string) => {
         localStorage.setItem(key, value);
     }
 };
+
+export const processSymbolUrlParam = (symbol: string) => {
+    // Convert lowercased url patterns into uppercase
+    // except coins like kPEPE, kBONK, etc.
+    const kTokenPattern = /^k[A-Z]+$/;
+    if (!kTokenPattern.test(symbol)) {
+        return symbol.toUpperCase();
+    }
+    return symbol;
+};

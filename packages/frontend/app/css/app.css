@@ -11,7 +11,6 @@
     height: 100vh;
     height: 100svh; /* Added for mobile browsers */
     color: white;
-    /* overflow-y: hidden; */
 }
 
 .mobile-footer {
@@ -26,8 +25,15 @@
     height: 100%;
     overflow-y: auto;
     /* background: var(--bg-dark3); */
+}
+
+.content:not(.home-page) {
     padding: 0px var(--padding-s, 8px) var(--padding-s, 8px)
         var(--padding-s, 8px);
+}
+
+.content.home-page {
+    padding: 0;
 }
 
 /* Simple styling examples for header/footer */
@@ -46,7 +52,9 @@
 
 @media (max-width: 768px) {
     .root-container {
-        grid-template-rows: 56px 1fr 56px; /* Mobile: header, content,  footer */
+        /* Mobile: header, content,  footer */
+        /* grid-template-rows: 56px 1fr 56px;  */
+        grid-template-rows: 56px 1fr; /* Mobile: header, content,  footer */
     }
 
     /* Show the footer only on mobile with proper positioning */
@@ -65,7 +73,11 @@
     }
 
     /* Make the main content scrollable with padding for the footer */
-    .content {
-        padding-bottom: 50px; /* Add padding to prevent content being hidden behind footer */
+    .content:not(.home-page) {
+        padding-bottom: 50px;
+    }
+
+    .content.home-page {
+        padding-bottom: 0;
     }
 }

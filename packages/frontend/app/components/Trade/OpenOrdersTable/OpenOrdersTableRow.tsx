@@ -30,6 +30,8 @@ export default function OpenOrdersTableRow(props: OpenOrdersTableRowProps) {
     const { formatNum } = useNumFormatter();
     const { getBsColor } = useAppSettings();
 
+    const showTpSl = false;
+
     const handleCancel = () => {
         if (onCancel) {
             onCancel(order.timestamp, order.coin);
@@ -37,7 +39,9 @@ export default function OpenOrdersTableRow(props: OpenOrdersTableRowProps) {
     };
 
     return (
-        <div className={styles.rowContainer}>
+        <div
+            className={`${styles.rowContainer} ${!showTpSl ? styles.noTpSl : ''}`}
+        >
             <div className={`${styles.cell} ${styles.timeCell}`}>
                 {formatTimestamp(order.timestamp)}
             </div>
@@ -78,12 +82,14 @@ export default function OpenOrdersTableRow(props: OpenOrdersTableRowProps) {
             <div className={`${styles.cell} ${styles.triggerConditionsCell}`}>
                 {order.triggerCondition}
             </div>
-            <div className={`${styles.cell} ${styles.tpslCell}`}>
-                {order.isTrigger ? formatNum(order.triggerPx || 0) : '--'}
-                <button>
-                    <LuPen color='var(--text1)' size={10} />
-                </button>
-            </div>
+            {showTpSl && (
+                <div className={`${styles.cell} ${styles.tpslCell}`}>
+                    {order.isTrigger ? formatNum(order.triggerPx || 0) : '--'}
+                    <button>
+                        <LuPen color='var(--text1)' size={10} />
+                    </button>
+                </div>
+            )}
             <div className={`${styles.cell} ${styles.cancelCell}`}>
                 <button className={styles.cancelButton} onClick={handleCancel}>
                     Cancel

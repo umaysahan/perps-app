@@ -8,27 +8,32 @@ import TokenDropdown, {
     type Token,
 } from '~/components/TokenDropdown/TokenDropdown';
 import SimpleButton from '~/components/SimpleButton/SimpleButton';
+import FogoLogo from '../../../assets/tokens/FOGO.svg';
+import { useNotificationStore } from '~/stores/NotificationStore';
+import useNumFormatter from '~/hooks/useNumFormatter';
 
-interface PortfolioDepositProps {
+interface propsIF {
     portfolio: {
         id: string;
         name: string;
         availableBalance: number;
         unit?: string;
     };
-    onDeposit: (amount: number) => void;
+    onDeposit: (amount: number) => void | Promise<any>;
     onClose: () => void;
     isProcessing?: boolean;
 }
 
-function PortfolioDeposit({
-    portfolio,
-    onDeposit,
+function PortfolioDeposit(props: propsIF) {
+    const { portfolio, onDeposit, isProcessing = false } = props;
+    const notificationStore = useNotificationStore();
+    const { formatNum } = useNumFormatter();
 
-    isProcessing = false,
-}: PortfolioDepositProps) {
     const [amount, setAmount] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
+    const [transactionStatus, setTransactionStatus] = useState<
+        'idle' | 'pending' | 'success' | 'failed'
+    >('idle');
     const [selectedToken, setSelectedToken] = useState<Token>(
         AVAILABLE_TOKENS.find(
             (token) => token.symbol === (portfolio.unit || 'USDe'),
@@ -47,6 +52,8 @@ function PortfolioDeposit({
         (event: React.ChangeEvent<HTMLInputElement>) => {
             const newValue = event.target.value;
             debouncedHandleChange(newValue);
+            // Clear transaction status when user starts typing
+            setTransactionStatus('idle');
         },
         [debouncedHandleChange],
     );
@@ -56,25 +63,78 @@ function PortfolioDeposit({
         setError(null);
     }, [availableBalance]);
 
-    const handleDeposit = useCallback(() => {
+    const handleDeposit = useCallback(async () => {
         const depositAmount = parseFloat(amount);
+        setError(null);
+        setTransactionStatus('pending');
 
         if (!depositAmount || isNaN(depositAmount)) {
             setError('Please enter a valid amount');
+            setTransactionStatus('idle');
             return;
         }
 
         if (depositAmount <= 0) {
             setError('Amount must be greater than 0');
+            setTransactionStatus('idle');
+            return;
+        }
+
+        // Check minimum deposit of $10
+        if (depositAmount < 10) {
+            setError('Minimum deposit amount is $10.00');
+            setTransactionStatus('idle');
             return;
         }
 
         if (depositAmount > availableBalance) {
             setError(`Amount exceeds available balance of ${availableBalance}`);
+            setTransactionStatus('idle');
             return;
         }
 
-        onDeposit(depositAmount);
+        try {
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(
+                    () =>
+                        reject(
+                            new Error('Transaction timed out after 15 seconds'),
+                        ),
+                    15000,
+                );
+            });
+
+            // Race between the deposit and the timeout
+            const result = await Promise.race([
+                onDeposit(depositAmount),
+                timeoutPromise,
+            ]);
+
+            // Check if the result indicates failure
+            if (result && result.success === false) {
+                setTransactionStatus('failed');
+                setError(result.error || 'Transaction failed');
+            } else {
+                setTransactionStatus('success');
+                setAmount(''); // Clear form on success
+
+                // Show success notification
+                notificationStore.add({
+                    title: 'Deposit Successful',
+                    message: `Successfully deposited $${depositAmount.toFixed(2)} USD`,
+                    icon: 'check',
+                });
+
+                // Close modal on success - notification will show after modal closes
+                if (props.onClose) {
+                    props.onClose();
+                }
+            }
+        } catch (error) {
+            setTransactionStatus('failed');
+            setError(error instanceof Error ? error.message : 'Deposit failed');
+        }
     }, [amount, availableBalance, onDeposit]);
 
     const handleTokenSelect = useCallback((token: Token) => {
@@ -112,11 +172,20 @@ function PortfolioDeposit({
     );
 
     // Memoize info items to prevent recreating on each render
-    const infoItems = useMemo(
-        () => [
+    const infoItems = useMemo(() => {
+        // Check if this is a USD-related token
+        const isUSDToken =
+            selectedToken.symbol === 'USD' ||
+            selectedToken.symbol === 'USDe' ||
+            selectedToken.symbol === 'fUSD' ||
+            portfolio.unit === 'USD';
+
+        return [
             {
                 label: 'Available to deposit',
-                value: formatCurrency(availableBalance, selectedToken.symbol),
+                value: isUSDToken
+                    ? formatNum(availableBalance, 2, true, true) // Use app formatter for USD values
+                    : formatCurrency(availableBalance, selectedToken.symbol),
                 tooltip:
                     'The maximum amount you can deposit based on your balance',
             },
@@ -126,9 +195,21 @@ function PortfolioDeposit({
                     selectedToken.symbol === 'BTC' ? '0.00001 BTC' : '$0.001',
                 tooltip: 'Fee charged for processing the deposit transaction',
             },
-        ],
-        [availableBalance, selectedToken.symbol, formatCurrency],
-    );
+        ];
+    }, [
+        availableBalance,
+        selectedToken.symbol,
+        portfolio.unit,
+        formatCurrency,
+        formatNum,
+    ]);
+
+    // Check if amount is below minimum
+    const isBelowMinimum = useMemo(() => {
+        if (!amount) return false;
+        const depositAmount = parseFloat(amount);
+        return !isNaN(depositAmount) && depositAmount > 0 && depositAmount < 10;
+    }, [amount]);
 
     const isButtonDisabled = useMemo(
         () =>
@@ -142,14 +223,8 @@ function PortfolioDeposit({
     return (
         <div className={styles.container}>
             <div className={styles.textContent}>
-                <h4>
-                    Deposit {selectedToken.symbol} to {portfolio.name}
-                </h4>
-                <p>
-                    Deposit {selectedToken.symbol} to your {portfolio.name}{' '}
-                    portfolio. Funds will be immediately available for
-                    allocation.
-                </p>
+                <img src={FogoLogo} alt='Fogo Chain Logo' width='64px' />
+                <h4>Deposit {selectedToken.symbol} from Fogo</h4>
             </div>
 
             <TokenDropdown
@@ -160,7 +235,12 @@ function PortfolioDeposit({
             />
 
             <div className={styles.inputContainer}>
-                <h6>Amount</h6>
+                <h6>
+                    Amount{' '}
+                    {isBelowMinimum && (
+                        <span className={styles.minWarning}>(Min: $10)</span>
+                    )}
+                </h6>
                 <input
                     type='text'
                     value={amount}
@@ -168,7 +248,7 @@ function PortfolioDeposit({
                     aria-label='deposit input'
                     inputMode='numeric'
                     pattern='[0-9]*'
-                    placeholder='Enter amount'
+                    placeholder='Enter amount (min $10)'
                     min='0'
                     step='any'
                     disabled={isProcessing}
@@ -181,6 +261,11 @@ function PortfolioDeposit({
                     Max
                 </button>
                 {error && <div className={styles.error}>{error}</div>}
+                {transactionStatus === 'failed' && !error && (
+                    <div className={styles.error}>
+                        Transaction failed. Please try again.
+                    </div>
+                )}
             </div>
 
             <div className={styles.contentContainer}>
@@ -205,9 +290,13 @@ function PortfolioDeposit({
             <SimpleButton
                 bg='accent1'
                 onClick={handleDeposit}
-                disabled={isButtonDisabled}
+                disabled={isButtonDisabled || isBelowMinimum}
             >
-                {isProcessing ? 'Processing...' : 'Deposit'}
+                {transactionStatus === 'pending'
+                    ? 'Confirming Transaction...'
+                    : isProcessing
+                      ? 'Processing...'
+                      : 'Deposit'}
             </SimpleButton>
         </div>
     );

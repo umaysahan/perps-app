@@ -29,10 +29,12 @@ const Tooltip: React.FC<TooltipProps> = ({
     delay = 0,
 }) => {
     const [isVisible, setIsVisible] = useState(false);
+    const [isPositioned, setIsPositioned] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState({ left: 0, top: 0 });
     const triggerRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
     const timeoutRef = useRef<NodeJS.Timeout>();
+    const positionTimeoutRef = useRef<NodeJS.Timeout>();
     const isMobile = useRef(false);
 
     // Detect if device is mobile
@@ -41,12 +43,24 @@ const Tooltip: React.FC<TooltipProps> = ({
     }, []);
 
     const positionTooltip = () => {
-        if (!triggerRef.current || !tooltipRef.current) return;
+        if (!triggerRef.current || !tooltipRef.current || !isVisible) return;
 
         const triggerRect = triggerRef.current.getBoundingClientRect();
         const tooltipRect = tooltipRef.current.getBoundingClientRect();
         const padding = 10;
         const gap = 8;
+
+        // If tooltip hasn't been measured yet , try again
+        if (tooltipRect.width === 0 || tooltipRect.height === 0) {
+            if (positionTimeoutRef.current) {
+                clearTimeout(positionTimeoutRef.current);
+            }
+            positionTimeoutRef.current = setTimeout(
+                () => positionTooltip(),
+                10,
+            );
+            return;
+        }
 
         let left = 0;
         let top = 0;
@@ -106,7 +120,7 @@ const Tooltip: React.FC<TooltipProps> = ({
                 break;
         }
 
-        //  fallback positioning if tooltip would go off-screen
+        // Fallback positioning if tooltip would go off-screen
         let finalPosition = position;
 
         // Check horizontal bounds
@@ -192,9 +206,12 @@ const Tooltip: React.FC<TooltipProps> = ({
         }
 
         setTooltipPosition({
-            left: Math.round(left),
-            top: Math.round(top),
+            left: Math.max(0, Math.round(left)),
+            top: Math.max(0, Math.round(top)),
         });
+
+        // Mark as positioned so it becomes visible
+        setIsPositioned(true);
     };
 
     const showTooltip = () => {
@@ -207,13 +224,9 @@ const Tooltip: React.FC<TooltipProps> = ({
         if (delay > 0) {
             timeoutRef.current = setTimeout(() => {
                 setIsVisible(true);
-                // Position after state update
-                setTimeout(positionTooltip, 0);
             }, delay);
         } else {
             setIsVisible(true);
-            // Position after state update
-            setTimeout(positionTooltip, 0);
         }
     };
 
@@ -221,8 +234,23 @@ const Tooltip: React.FC<TooltipProps> = ({
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
         }
+        if (positionTimeoutRef.current) {
+            clearTimeout(positionTimeoutRef.current);
+        }
         setIsVisible(false);
+        setIsPositioned(false);
     };
+
+    // Position tooltip when it becomes visible
+    useEffect(() => {
+        if (isVisible) {
+            // Use requestAnimationFrame to ensure DOM has been updated
+            const frame = requestAnimationFrame(() => {
+                positionTooltip();
+            });
+            return () => cancelAnimationFrame(frame);
+        }
+    }, [isVisible]);
 
     const handleMouseEnter = () => {
         if (!isMobile.current) {
@@ -262,13 +290,16 @@ const Tooltip: React.FC<TooltipProps> = ({
             window.removeEventListener('scroll', handleScrollOrResize);
             window.removeEventListener('resize', handleScrollOrResize);
         };
-    }, [isVisible]);
+    }, [isVisible, position]);
 
-    // Cleanup timeout on unmount
+    // Cleanup timeouts on unmount
     useEffect(() => {
         return () => {
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
+            }
+            if (positionTimeoutRef.current) {
+                clearTimeout(positionTimeoutRef.current);
             }
         };
     }, []);
@@ -289,7 +320,9 @@ const Tooltip: React.FC<TooltipProps> = ({
             {isVisible && content && (
                 <div
                     ref={tooltipRef}
-                    className={`${styles.tooltip} ${styles.visible} ${isMobile.current ? styles.mobileTooltip : ''}`}
+                    className={`${styles.tooltip} ${isPositioned ? styles.visible : styles.positioning} ${
+                        isMobile.current ? styles.mobileTooltip : ''
+                    }`}
                     style={{
                         left: tooltipPosition.left,
                         top: tooltipPosition.top,

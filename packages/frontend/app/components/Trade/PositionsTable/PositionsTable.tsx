@@ -4,9 +4,9 @@ import { useModal } from '~/hooks/useModal';
 import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import type { TableSortDirection } from '~/utils/CommonIFs';
+import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
 import type { PositionDataSortBy, PositionIF } from '~/utils/UserDataIFs';
 import { sortPositionData } from '~/utils/position/PositionUtils';
-import { EXTERNAL_PAGE_URL_PREFIX, WsChannels } from '~/utils/Constants';
 import PositionsTableHeader from './PositionsTableHeader';
 import PositionsTableRow from './PositionsTableRow';
 

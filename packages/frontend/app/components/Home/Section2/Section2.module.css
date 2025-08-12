@@ -1,0 +1,203 @@
+/* Containers */
+.sub_container {
+    max-width: 120rem;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 0 12px;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2rem;
+    flex-shrink: 0;
+    height: 100%;
+}
+
+.sub_container h2 {
+    color: var(--text1, #f0f0f8);
+    font-family: 'Lexend Deca';
+    font-size: var(--header1-size);
+    line-height: var(--header1-lh);
+    font-style: normal;
+    font-weight: 200;
+}
+
+.sub_container p {
+    color: var(--text2, #8b98a5);
+    font-family: 'Lexend Deca';
+    font-size: var(--header-size);
+    line-height: normal;
+    font-style: normal;
+    font-weight: 300;
+    letter-spacing: -0.72px;
+}
+
+/* Links Grid */
+.links_container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.links_container div:nth-of-type(9) {
+    grid-column: span 2;
+    width: 100%;
+}
+
+/* Link Cards */
+.link_card_container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 4px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--dark3, #1e1e24);
+    background: var(--dark2, #12121a);
+}
+
+.link_card_header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.link_card_container h3 {
+    color: var(--text1, #f0f0f8);
+    font-size: 16px !important;
+    font-style: normal;
+    font-weight: 300;
+}
+
+.link_card_container p {
+    color: var(--text2, #8b98a5);
+    font-size: 14px !important;
+    font-style: normal;
+    font-weight: 300;
+}
+
+.link_card_icon_container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    gap: 10px;
+    border-radius: 20px;
+    border: 1px solid var(--dark3, #1e1e24);
+}
+
+.link_card_link_container {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.link_card_link_container .link_text {
+    color: var(--accent, #7371fc);
+    text-align: center;
+    font-size: var(--body-size);
+    font-style: normal;
+    font-weight: 300;
+}
+
+/* Media Queries */
+@media (min-width: 480px) {
+    .sub_container h2 {
+        font-size: 2.25rem;
+        line-height: 2.5rem;
+    }
+
+    .sub_container p {
+        font-size: 1.125rem;
+        line-height: 1.75rem;
+    }
+}
+
+@media (min-width: 740px) {
+    .sub_container {
+        padding: 48px 90px;
+    }
+
+    .link_card_container {
+        padding: 1rem;
+        height: 150px;
+    }
+}
+
+@media (min-width: 820px) {
+    .sub_container h2 {
+        line-height: normal;
+    }
+
+    .sub_container p {
+        line-height: normal;
+    }
+
+    .link_card_container {
+        padding: 1rem;
+        height: 166px;
+        /* overflow: scroll; */
+    }
+
+    .link_card_container h3 {
+        font-size: 24px !important;
+    }
+
+    .link_card_container p {
+        font-size: 14px !important;
+    }
+}
+
+@media (min-width: 1080px) {
+    .sub_container {
+        gap: 128px;
+        padding: 48px 160px;
+    }
+
+    .sub_container h2 {
+        font-size: 54px;
+    }
+
+    .sub_container p {
+        font-size: 27px;
+    }
+
+    .links_container {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .links_container div:nth-of-type(9) {
+        grid-column: span 4;
+        width: 100%;
+    }
+}
+
+@media (min-width: 1600px) {
+    .sub_container {
+        padding: 64px 214px;
+    }
+
+    .sub_container h2 {
+        font-size: 72px;
+    }
+
+    .links_container {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .links_container div:nth-of-type(6),
+    .links_container div:nth-of-type(7),
+    .links_container div:nth-of-type(8),
+    .links_container div:nth-of-type(9) {
+        margin-left: 45%;
+        grid-column: span 1;
+        width: 100%;
+    }
+}

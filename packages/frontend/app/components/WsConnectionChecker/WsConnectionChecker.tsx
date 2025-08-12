@@ -7,6 +7,7 @@ import { useTradeDataStore } from '~/stores/TradeDataStore';
 import { useInfoApi } from '~/hooks/useInfoApi';
 import { useNumFormatter } from '~/hooks/useNumFormatter';
 import { WS_SLEEP_MODE, WS_SLEEP_MODE_PRICE_CHECK } from '~/utils/Constants';
+import { Pages, usePage } from '~/hooks/usePage';
 
 export default function WsConnectionChecker() {
     // Use memoized value to prevent unnecessary re-renders
@@ -20,10 +21,23 @@ export default function WsConnectionChecker() {
 
     const { fetchTokenId, fetchTokenDetails } = useInfoApi();
 
-    const { symbol } = useTradeDataStore();
+    const { symbol, updateSymbolInfo } = useTradeDataStore();
     const { setTitleOverride, setIsTabActive } = useAppStateStore();
     const { formatNum } = useNumFormatter();
     const isTabPassive = useRef(false);
+    const [hideReconnectIndicator, setHideReconnectIndicator] = useState(false);
+
+    const sleepModeBlackList = new Set([Pages.HOME]);
+
+    const { page } = usePage();
+
+    useEffect(() => {
+        if (page && sleepModeBlackList.has(page)) {
+            setHideReconnectIndicator(true);
+        } else {
+            setHideReconnectIndicator(false);
+        }
+    }, [page]);
 
     useEffect(() => {
         const onlineListener = () => {
@@ -73,6 +87,7 @@ export default function WsConnectionChecker() {
     useEffect(() => {
         if (symbol && isWsSleepMode) {
             const fetcher = async () => {
+                console.log('>>> fetch token id', new Date().toISOString());
                 const tokenId = await fetchTokenId(symbol);
                 setTokenId(tokenId);
             };
@@ -81,9 +96,11 @@ export default function WsConnectionChecker() {
             titleSetterIntervalRef.current = setInterval(async () => {
                 if (tokenId) {
                     const tokenDetails = await fetchTokenDetails(tokenId);
+                    // update page title
                     setTitleOverride(
                         `${tokenDetails.markPx ? '$' + formatNum(tokenDetails.markPx) + ' | ' : ''} ${symbol?.toUpperCase() ? symbol?.toUpperCase() + ' | ' : ''}Ambient`,
                     );
+                    updateSymbolInfo(tokenDetails); // update symbol price in store also
                 }
             }, WS_SLEEP_MODE_PRICE_CHECK);
         } else {
@@ -103,7 +120,9 @@ export default function WsConnectionChecker() {
     return (
         <>
             {!internetConnected && <NoConnectionIndicator />}
-            {wsReconnecting && <WsReconnectingIndicator />}
+            {wsReconnecting && !hideReconnectIndicator && (
+                <WsReconnectingIndicator />
+            )}
         </>
     );
 }

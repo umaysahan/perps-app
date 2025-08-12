@@ -9,6 +9,7 @@ import styles from './symbolsearch.module.css';
 const SymbolSearch: React.FunctionComponent = () => {
     const { symbol } = useTradeDataStore();
     const [isOpen, setIsOpen] = useState(false);
+    const isSymbolSearchClickable = false;
 
     const symbolSearchBackdropRef = useOutsideClick<HTMLDivElement>(() => {
         setIsOpen(false);
@@ -34,7 +35,11 @@ const SymbolSearch: React.FunctionComponent = () => {
             >
                 <div
                     className={styles.symbolSearchContainer}
-                    onClick={wrapperClickHandler}
+                    onClick={
+                        isSymbolSearchClickable
+                            ? wrapperClickHandler
+                            : undefined
+                    }
                 >
                     <div
                         className={styles.symbolIcon}
@@ -50,9 +55,11 @@ const SymbolSearch: React.FunctionComponent = () => {
 
                     <div className={styles.symbolName}>{symbol}-USD</div>
 
-                    <FaChevronDown
-                        className={`${styles.comboBoxIcon} ${isOpen ? styles.comboBoxIconOpen : ''}`}
-                    />
+                    {isSymbolSearchClickable && (
+                        <FaChevronDown
+                            className={`${styles.comboBoxIcon} ${isOpen ? styles.comboBoxIconOpen : ''}`}
+                        />
+                    )}
                 </div>
 
                 {isOpen && <SymbolList setIsOpen={setIsOpen} />}

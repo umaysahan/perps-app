@@ -7,7 +7,7 @@ import type {
 export const processWSCandleMessage = (payload: any): Bar => {
     try {
         const bar: Bar = {
-            time: payload.T,
+            time: payload.t,
             open: Number(payload.o),
             high: Number(payload.h),
             low: Number(payload.l),

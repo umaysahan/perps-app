@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import styles from './DepositModal.module.css';
 import Tooltip from '~/components/Tooltip/Tooltip';
 import { AiOutlineQuestionCircle } from 'react-icons/ai';
 import { LuChevronDown } from 'react-icons/lu';
 import { useVaultManager } from '~/routes/vaults/useVaultManager';
+import { useDepositService } from '~/hooks/useDepositService';
+import { useNotificationStore } from '~/stores/NotificationStore';
 
 interface DepositModalProps {
     vault: {
@@ -20,18 +22,30 @@ interface DepositModalProps {
 export default function DepositModal({
     vault,
     onDeposit,
-    // onClose,
+    onClose,
 }: DepositModalProps) {
+    const notificationStore = useNotificationStore();
     const [amount, setAmount] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [selectedToken] = useState('USDe');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [transactionStatus, setTransactionStatus] = useState<
+        'idle' | 'pending' | 'success' | 'failed'
+    >('idle');
 
     const {
         formatCurrency,
-        validateAmount,
+        validateAmount: validateVaultAmount,
         // isValidNumberInput,
         getAvailableCapacity,
     } = useVaultManager();
+
+    const {
+        balance: walletBalance,
+        validateAmount: validateDepositAmount,
+        executeDeposit,
+        isLoading: isDepositLoading,
+    } = useDepositService();
 
     // Use the unit from the vault or default to USD
     const unitValue = vault.unit || 'USD';
@@ -48,42 +62,189 @@ export default function DepositModal({
         [],
     );
 
+    // Calculate max available amount (minimum of vault capacity and wallet balance)
+    const maxAvailableAmount = useMemo(() => {
+        const userWalletBalance = walletBalance?.decimalized || 0;
+        return Math.min(availableCapacity, userWalletBalance);
+    }, [availableCapacity, walletBalance]);
+
     const handleMaxClick = useCallback(() => {
-        setAmount(availableCapacity.toString());
+        setAmount(maxAvailableAmount.toString());
         setError(null);
-    }, [availableCapacity]);
+    }, [maxAvailableAmount]);
 
-    const handleDeposit = useCallback(() => {
+    const handleDeposit = useCallback(async () => {
         const depositAmount = parseFloat(amount);
+        setError(null);
+        setIsProcessing(true);
+        setTransactionStatus('pending');
 
-        const validation = validateAmount(depositAmount, availableCapacity);
+        try {
+            // Validate minimum deposit amount ($10)
+            const depositValidation = validateDepositAmount(depositAmount);
+            if (!depositValidation.isValid) {
+                setError(depositValidation.message || 'Invalid deposit amount');
+                setIsProcessing(false);
+                setTransactionStatus('idle');
+                return;
+            }
 
-        if (!validation.isValid) {
-            setError(validation.message);
-            return;
+            // Validate against vault capacity and wallet balance
+            const vaultValidation = validateVaultAmount(
+                depositAmount,
+                maxAvailableAmount,
+            );
+            if (!vaultValidation.isValid) {
+                setError(vaultValidation.message || 'Invalid amount');
+                setIsProcessing(false);
+                setTransactionStatus('idle');
+                return;
+            }
+
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(
+                    () =>
+                        reject(
+                            new Error('Transaction timed out after 15 seconds'),
+                        ),
+                    15000,
+                );
+            });
+
+            // Race between the deposit and the timeout
+            const result = await Promise.race([
+                executeDeposit(depositAmount),
+                timeoutPromise,
+            ]);
+
+            if (result.success && result.confirmed) {
+                setTransactionStatus('success');
+                // Update vault state through parent component
+                onDeposit(depositAmount);
+                // Clear the form
+                setAmount('');
+
+                // Show success notification
+                notificationStore.add({
+                    title: 'Deposit Successful',
+                    message: `Successfully deposited $${depositAmount.toFixed(2)} USD`,
+                    icon: 'check',
+                });
+
+                // Close modal on success - notification will show after modal closes
+                onClose();
+            } else {
+                setTransactionStatus('failed');
+                setError(
+                    result.error || 'Transaction failed or was not confirmed',
+                );
+            }
+        } catch (error) {
+            setTransactionStatus('failed');
+            setError(error instanceof Error ? error.message : 'Deposit failed');
+        } finally {
+            setIsProcessing(false);
         }
-
-        onDeposit(depositAmount);
-    }, [amount, availableCapacity, validateAmount, onDeposit]);
+    }, [
+        amount,
+        maxAvailableAmount,
+        validateDepositAmount,
+        validateVaultAmount,
+        executeDeposit,
+        onDeposit,
+    ]);
 
     const infoItems = [
         {
             label: 'Available to deposit',
-            value: formatCurrency(availableCapacity, unitValue),
+            value: formatCurrency(maxAvailableAmount, unitValue),
             tooltip:
-                'The maximum amount you can deposit into this vault based on remaining capacity',
+                'The maximum amount you can deposit based on vault capacity and wallet balance',
+        },
+        {
+            label: 'Wallet balance',
+            value: formatCurrency(walletBalance?.decimalized || 0, unitValue),
+            tooltip: 'Your current wallet balance',
         },
         {
             label: 'Network Fee',
-            value: unitValue === 'USD' ? '$0.001' : '0.00001 BTC',
-            tooltip: 'Fee charged for processing the deposit transaction',
+            value: 'Sponsored by Fogo',
+            tooltip: 'Transaction fees are sponsored by Fogo',
         },
     ];
 
-    const isButtonDisabled =
-        !amount ||
-        parseFloat(amount) <= 0 ||
-        parseFloat(amount) > availableCapacity;
+    // Check if amount is below minimum
+    const isBelowMinimum = useMemo(() => {
+        if (!amount) return false;
+        const depositAmount = parseFloat(amount);
+        const result =
+            !isNaN(depositAmount) && depositAmount > 0 && depositAmount < 10;
+        console.log(
+            'isBelowMinimum check - amount:',
+            amount,
+            'result:',
+            result,
+        );
+        return result;
+    }, [amount]);
+
+    // Enhanced button state logic
+    const isButtonDisabled = useMemo(() => {
+        if (!amount || isProcessing || isDepositLoading) return true;
+
+        const depositAmount = parseFloat(amount);
+        if (isNaN(depositAmount) || depositAmount <= 0) return true;
+
+        // Check minimum deposit requirement
+        const depositValidation = validateDepositAmount(depositAmount);
+        if (!depositValidation.isValid) return true;
+
+        // Check against available capacity and wallet balance
+        if (depositAmount > maxAvailableAmount) return true;
+
+        return false;
+    }, [
+        amount,
+        isProcessing,
+        isDepositLoading,
+        validateDepositAmount,
+        maxAvailableAmount,
+    ]);
+
+    // Enhanced button text logic
+    const buttonText = useMemo(() => {
+        if (transactionStatus === 'pending') return 'Confirming Transaction...';
+        if (isProcessing) return 'Processing...';
+        if (isDepositLoading) return 'Loading...';
+
+        if (amount) {
+            const depositAmount = parseFloat(amount);
+            console.log(
+                'Button text check - amount:',
+                amount,
+                'parsed:',
+                depositAmount,
+            );
+
+            if (!isNaN(depositAmount) && depositAmount > 0) {
+                const depositValidation = validateDepositAmount(depositAmount);
+                console.log('Validation result:', depositValidation);
+
+                if (!depositValidation.isValid) {
+                    return depositValidation.message || 'Invalid Amount';
+                }
+            }
+        }
+
+        return 'Deposit';
+    }, [
+        amount,
+        isProcessing,
+        isDepositLoading,
+        validateDepositAmount,
+        transactionStatus,
+    ]);
 
     return (
         <div className={styles.container}>
@@ -109,7 +270,12 @@ export default function DepositModal({
             </div>
 
             <div className={styles.inputContainer}>
-                <h6>Amount</h6>
+                <h6>
+                    Amount{' '}
+                    {isBelowMinimum && (
+                        <span className={styles.minWarning}>(Min: $10)</span>
+                    )}
+                </h6>
                 <input
                     type='text'
                     value={amount}
@@ -117,14 +283,20 @@ export default function DepositModal({
                     aria-label='deposit input'
                     inputMode='numeric'
                     pattern='[0-9]*'
-                    placeholder='Enter amount'
+                    placeholder='Enter amount (min $10)'
                     min='0'
                     step='any'
+                    className={isBelowMinimum ? styles.inputBelowMin : ''}
                 />
                 <button onClick={handleMaxClick} className={styles.maxButton}>
                     Max
                 </button>
                 {error && <div className={styles.error}>{error}</div>}
+                {transactionStatus === 'failed' && !error && (
+                    <div className={styles.error}>
+                        Transaction failed. Please try again.
+                    </div>
+                )}
             </div>
 
             <div className={styles.contentContainer}>
@@ -146,11 +318,20 @@ export default function DepositModal({
                 ))}
             </div>
             <button
-                className={styles.actionButton}
-                onClick={handleDeposit}
-                disabled={isButtonDisabled}
+                className={`${styles.actionButton} ${isBelowMinimum ? styles.belowMinimum : ''}`}
+                onClick={(e) => {
+                    if (isBelowMinimum) {
+                        e.preventDefault();
+                        setError('Minimum deposit amount is $10.00');
+                        // Clear error after 3 seconds
+                        setTimeout(() => setError(null), 3000);
+                        return;
+                    }
+                    handleDeposit();
+                }}
+                disabled={isButtonDisabled && !isBelowMinimum}
             >
-                Deposit
+                {buttonText}
             </button>
         </div>
     );

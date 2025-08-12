@@ -108,6 +108,14 @@
     font-size: var(--font-size-xs, 10px);
 }
 
+.helperText {
+    position: absolute;
+    bottom: -20px;
+    left: 0;
+    color: var(--text2, #bcbcc4);
+    font-size: var(--font-size-xs, 10px);
+}
+
 .contentContainer {
     width: 100%;
     display: flex;
@@ -165,6 +173,28 @@
     background: var(--bg-dark4, #27272c);
     color: var(--text2, #bcbcc4);
     cursor: not-allowed;
+}
+
+.actionButton.belowMinimum {
+    background: #ff4d4f;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.actionButton.belowMinimum:hover {
+    opacity: 1;
+    background: #ff6b6b;
+}
+
+.minWarning {
+    color: #ff4d4f;
+    font-size: var(--font-size-xs, 10px);
+    margin-left: 4px;
+}
+
+.inputBelowMin {
+    border: 1px solid #ff4d4f !important;
+    outline: 1px solid #ff4d4f !important;
 }
 @media (max-width: 768px) {
     .container {

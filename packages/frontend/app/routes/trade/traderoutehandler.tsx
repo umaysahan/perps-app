@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
-import { getLS } from '~/utils/AppUtils';
+import { getLS, processSymbolUrlParam } from '~/utils/AppUtils';
 import { WsChannels } from '~/utils/Constants';
 
 export default function TradeRouteHandler() {
@@ -20,11 +20,13 @@ export default function TradeRouteHandler() {
     };
 
     const checkSymbol = async () => {
-        const urlSymbol = marketId;
+        let urlSymbol = marketId;
 
         if (urlSymbol === undefined || urlSymbol === null || urlSymbol === '') {
             return getSymbolFromLS();
         } else {
+            urlSymbol = processSymbolUrlParam(urlSymbol);
+
             const response = await fetch(`https://api.hyperliquid.xyz/info`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

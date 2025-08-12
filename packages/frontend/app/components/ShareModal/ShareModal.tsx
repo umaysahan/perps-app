@@ -1,10 +1,13 @@
 import { useMemo, useRef } from 'react';
-import { LuCopy } from 'react-icons/lu';
-import { RiArrowDownLine, RiTwitterFill } from 'react-icons/ri';
+import { RiTwitterFill } from 'react-icons/ri';
 import { tokenBackgroundMap } from '~/assets/tokens/tokenBackgroundMap';
 import useNumFormatter from '~/hooks/useNumFormatter';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
-import { PERPS_TWITTER, TWITTER_CHARACTER_LIMIT } from '~/utils/Constants';
+import {
+    FOGO_TWITTER,
+    PERPS_TWITTER,
+    TWITTER_CHARACTER_LIMIT,
+} from '~/utils/Constants';
 import type { PositionIF } from '~/utils/position/PositionIFs';
 import Modal from '../Modal/Modal';
 import perpsLogo from './perpsLogo.png';
@@ -24,7 +27,7 @@ export default function ShareModal(props: propsIF) {
     const { formatNum } = useNumFormatter();
     const { coinPriceMap } = useTradeDataStore();
 
-    const REFERRAL_CODE = '0x1';
+    // const REFERRAL_CODE = '0x1';
 
     const TEXTAREA_ID_FOR_DOM = 'share_card_custom_text';
 
@@ -38,7 +41,8 @@ export default function ShareModal(props: propsIF) {
     const bgType =
         tokenBackgroundMap[memPosition.coin.toUpperCase()] || 'light';
 
-    const referralLink = `https://ambient.finance/v2/join/` + REFERRAL_CODE;
+    const referralLink = 'https://perps.ambient.finance';
+    // const referralLink = `https://ambient.finance/v2/join/` + REFERRAL_CODE;
 
     return (
         <Modal title='' close={close}>
@@ -114,16 +118,16 @@ export default function ShareModal(props: propsIF) {
                             </div>
                         </div>
                     </div>
-                    <div className={styles.price}>
+                    {/* <div className={styles.price}>
                         <div>Referral code:</div>
                         <div>{referralLink}</div>
-                    </div>
+                    </div> */}
                 </div>
                 <div className={styles.info}>
-                    <div className={styles.referral_code}>
+                    {/* <div className={styles.referral_code}>
                         <div>Referral Code:</div>
                         <div>{REFERRAL_CODE}</div>
-                    </div>
+                    </div> */}
                     <div className={styles.custom_text}>
                         <label htmlFor={TEXTAREA_ID_FOR_DOM}>
                             Customize your text
@@ -133,16 +137,16 @@ export default function ShareModal(props: propsIF) {
                             ref={inputRef}
                             maxLength={TWITTER_CHARACTER_LIMIT}
                             autoComplete='false'
-                            defaultValue={`Trade $${memPosition.coin} perps on ${PERPS_TWITTER} using my referral code`}
+                            defaultValue={`Trade $${memPosition.coin} perps at ${PERPS_TWITTER} on ${FOGO_TWITTER} Testnet now`}
                         />
                     </div>
                     <div className={styles.button_bank}>
-                        <button>
+                        {/* <button>
                             Save Image <RiArrowDownLine />
                         </button>
                         <button>
                             Copy Link <LuCopy />
-                        </button>
+                        </button> */}
                         <button
                             onClick={() => {
                                 const width = 550;

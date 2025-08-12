@@ -17,6 +17,9 @@
 .chaseLimit {
     grid-template-columns: auto 1fr 50px;
 }
+.noMidLimit {
+    grid-template-columns: auto 1fr 15px;
+}
 .priceInputContainer input {
     background-color: transparent;
     outline: none;

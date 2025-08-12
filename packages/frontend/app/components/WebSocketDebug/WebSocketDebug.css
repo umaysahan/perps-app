@@ -1,0 +1,54 @@
+.websocket-debug {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    font-size: 14px;
+    min-width: 200px;
+}
+
+.websocket-debug h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+.socket-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 5px 0;
+    padding: 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.socket-status.connected {
+    background: rgba(0, 255, 0, 0.1);
+}
+
+.socket-status.disconnected {
+    background: rgba(255, 0, 0, 0.1);
+}
+
+.socket-name {
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.socket-state {
+    font-size: 12px;
+}
+
+.debug-hint {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+}

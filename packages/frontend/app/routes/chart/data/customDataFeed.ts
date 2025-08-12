@@ -9,6 +9,8 @@ import {
     getHistoricalData,
     getMarkColorData,
     getMarkFillData,
+    updateCandleCache,
+    updateMarkDataWithSubscription,
 } from './candleDataCache';
 import { processWSCandleMessage } from './processChartData';
 import {
@@ -16,14 +18,23 @@ import {
     resolutionToSecondsMiliSeconds,
     supportedResolutions,
 } from './utils/utils';
-export const createDataFeed = (info: Info | null): IDatafeedChartApi =>
+
+const subscriptions = new Map<
+    string,
+    { subId: number; unsubscribe: () => void }
+>();
+
+export const createDataFeed = (
+    info: Info | null,
+    addToFetchedChannels: (channel: string) => void,
+): IDatafeedChartApi =>
     ({
         searchSymbols: (userInput: string, exchange, symbolType, onResult) => {
             onResult([]);
         },
 
         onReady: (cb: any) => {
-            cb({
+            (cb({
                 supported_resolutions: supportedResolutions,
                 supports_marks: true,
             }),
@@ -34,7 +45,7 @@ export const createDataFeed = (info: Info | null): IDatafeedChartApi =>
                 // supports_marks: false,
                 // supports_time: true,
 
-                0;
+                0);
         },
 
         resolveSymbol: (symbolName, onResolve, onError) => {
@@ -49,7 +60,7 @@ export const createDataFeed = (info: Info | null): IDatafeedChartApi =>
                 supported_resolutions: supportedResolutions,
                 description: '',
                 type: '',
-                exchange: '',
+                exchange: 'Ambient',
                 listed_exchange: '',
                 format: 'price',
             };
@@ -152,60 +163,93 @@ export const createDataFeed = (info: Info | null): IDatafeedChartApi =>
             }
 
             if (!info) return console.log('SDK is not ready');
-            info.subscribe(
-                {
-                    type: WsChannels.USER_FILLS,
-                    user: userWallet,
-                },
-                (payload: any) => {
-                    if (!payload || !payload.data) return;
+            setTimeout(() => {
+                info.subscribe(
+                    {
+                        type: WsChannels.USER_FILLS,
+                        user: userWallet,
+                    },
+                    (payload: any) => {
+                        addToFetchedChannels(WsChannels.USER_FILLS);
+                        if (!payload || !payload.data) return;
 
-                    const fills = payload.data.fills;
-                    if (!fills || fills.length === 0) return;
+                        const fills = payload.data.fills;
+                        if (!fills || fills.length === 0) return;
 
-                    const poolFills = fills.filter(
-                        (fill: any) => fill.coin === symbolInfo.name,
-                    );
+                        const poolFills = fills.filter(
+                            (fill: any) => fill.coin === symbolInfo.name,
+                        );
 
-                    if (poolFills.length === 0) return;
+                        if (poolFills.length === 0) return;
 
-                    poolFills.sort((a: any, b: any) => b.time - a.time);
+                        poolFills.sort((a: any, b: any) => b.time - a.time);
 
-                    fillMarks(poolFills);
+                        fillMarks(poolFills);
 
-                    const markArray = [
-                        ...bSideOrderHistoryMarks.values(),
-                        ...aSideOrderHistoryMarks.values(),
-                    ];
+                        updateMarkDataWithSubscription(
+                            symbolInfo.name,
+                            poolFills,
+                            userWallet,
+                        );
 
-                    if (markArray.length > 0) {
-                        markArray.sort((a: any, b: any) => b.px - a.px);
+                        const markArray = [
+                            ...bSideOrderHistoryMarks.values(),
+                            ...aSideOrderHistoryMarks.values(),
+                        ];
 
-                        onDataCallback(markArray);
-                    }
-                },
-            );
+                        if (markArray.length > 0) {
+                            markArray.sort((a: any, b: any) => b.px - a.px);
+
+                            onDataCallback(markArray);
+                        }
+                    },
+                );
+            }, 500);
         },
 
-        subscribeBars: (symbolInfo, resolution, onTick) => {
+        subscribeBars: (symbolInfo, resolution, onTick, listenerGuid) => {
             if (!info) return console.log('SDK is not ready');
-            info.subscribe(
+            const unsubscribe = info.subscribe(
                 {
                     type: WsChannels.CANDLE,
                     coin: symbolInfo.ticker || '',
                     interval: mapResolutionToInterval(resolution),
                 },
                 (payload: any) => {
-                    if (payload.data.s === symbolInfo.ticker) {
-                        onTick(processWSCandleMessage(payload.data));
+                    if (
+                        symbolInfo.ticker &&
+                        payload.data.s === symbolInfo.ticker
+                    ) {
+                        const tick = processWSCandleMessage(payload.data);
+                        onTick(tick);
+
+                        updateCandleCache(symbolInfo.ticker, resolution, tick);
                     }
                 },
-            );
+            ) as { subId: number; unsubscribe: () => void };
+            subscriptions.set(listenerGuid, unsubscribe);
+
             // subscribeOnStream(symbolInfo, resolution, onTick);
         },
 
         unsubscribeBars: (listenerGuid) => {
-            clearInterval((window as any)[listenerGuid]);
-            delete (window as any)[listenerGuid];
+            const subscription = subscriptions.get(listenerGuid);
+
+            if (subscription) {
+                try {
+                    subscription.unsubscribe();
+                } catch (error) {
+                    console.warn(
+                        `Failed to unsubscribe for listenerGuid ${listenerGuid}:`,
+                        error,
+                    );
+                }
+
+                subscriptions.delete(listenerGuid);
+            } else {
+                console.warn(
+                    `No active subscription found for listenerGuid: ${listenerGuid}`,
+                );
+            }
         },
     }) as IDatafeedChartApi;

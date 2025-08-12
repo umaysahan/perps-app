@@ -1,35 +1,40 @@
 import {
     FaDiscord,
-    FaFileAlt,
-    FaMediumM,
-    FaQuestionCircle,
+    // FaFileAlt,
+    // FaMediumM,
+    // FaQuestionCircle,
     FaTwitter,
-    FaUserSecret,
 } from 'react-icons/fa';
-import { IoIosInformationCircle } from 'react-icons/io';
-import { useTutorial } from '~/hooks/useTutorial';
+// import { IoIosInformationCircle } from 'react-icons/io';
+// import { useTutorial } from '~/hooks/useTutorial';
+import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
 import packageJson from '../../../../package.json';
 import styles from './DropdownMenu.module.css';
 
 const menuItems = [
-    { name: 'Docs', icon: <FaFileAlt /> },
+    // { name: 'Docs', icon: <FaFileAlt /> },
     { name: 'Twitter', icon: <FaTwitter /> },
     { name: 'Discord', icon: <FaDiscord /> },
-    { name: 'Medium', icon: <FaMediumM /> },
-    { name: 'Privacy', icon: <FaUserSecret /> },
-    { name: 'Terms of Service', icon: <FaFileAlt /> },
-    { name: 'FAQ', icon: <FaQuestionCircle /> },
+    // { name: 'Medium', icon: <FaMediumM /> },
+    // { name: 'Privacy', icon: <FaUserSecret /> },
+    // { name: 'Terms of Service', icon: <FaFileAlt /> },
+    // { name: 'FAQ', icon: <FaQuestionCircle /> },
 ];
 
-const DropdownMenu = () => {
-    const { handleRestartTutorial } = useTutorial();
+interface DropdownMenuProps {
+    setIsDropdownMenuOpen: (open: boolean) => void;
+}
 
-    const handleTutorialClick = () => {
-        console.log(
-            'Tutorial button clicked in DropdownMenu, restarting tutorial...',
-        );
-        handleRestartTutorial();
-    };
+const DropdownMenu = ({ setIsDropdownMenuOpen }: DropdownMenuProps) => {
+    const sessionState = useSession();
+    // const { handleRestartTutorial } = useTutorial();
+
+    // const handleTutorialClick = () => {
+    //     console.log(
+    //         'Tutorial button clicked in DropdownMenu, restarting tutorial...',
+    //     );
+    //     handleRestartTutorial();
+    // };
 
     return (
         <div className={styles.container}>
@@ -39,14 +44,24 @@ const DropdownMenu = () => {
                     <span>{item.icon}</span>
                 </div>
             ))}
-            <button
+            {/* <button
                 className={styles.tutorialButton}
                 onClick={handleTutorialClick}
             >
                 Tutorial <IoIosInformationCircle size={22} />
-            </button>
+            </button> */}
             <div className={styles.version}>Version: {packageJson.version}</div>
-            <button className={styles.logoutButton}>Log Out</button>
+            {isEstablished(sessionState) && (
+                <button
+                    className={styles.logoutButton}
+                    onClick={() => {
+                        sessionState.endSession();
+                        setIsDropdownMenuOpen(false);
+                    }}
+                >
+                    Log Out
+                </button>
+            )}
         </div>
     );
 };

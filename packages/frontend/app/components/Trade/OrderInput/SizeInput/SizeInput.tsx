@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo } from 'react';
 import ComboBox from '~/components/Inputs/ComboBox/ComboBox';
+import NumFormattedInput from '~/components/Inputs/NumFormattedInput/NumFormattedInput';
 import type { OrderBookMode } from '~/utils/orderbook/OrderBookIFs';
 import styles from './SizeInput.module.css';
-import NumFormattedInput from '~/components/Inputs/NumFormattedInput/NumFormattedInput';
 
 interface PropsIF {
     value: string;
@@ -15,6 +15,7 @@ interface PropsIF {
     symbol: string;
     selectedMode: OrderBookMode;
     setSelectedMode: React.Dispatch<React.SetStateAction<OrderBookMode>>;
+    onFocus: () => void;
 }
 
 const SizeInput: React.FC<PropsIF> = React.memo((props) => {
@@ -29,11 +30,12 @@ const SizeInput: React.FC<PropsIF> = React.memo((props) => {
         symbol,
         selectedMode,
         setSelectedMode,
+        onFocus,
     } = props;
 
     // Memoized ComboBox options
     const comboBoxOptions = useMemo(
-        () => [symbol.toUpperCase(), 'USD'],
+        () => ['USD', symbol.toUpperCase()],
         [symbol],
     );
 
@@ -49,6 +51,7 @@ const SizeInput: React.FC<PropsIF> = React.memo((props) => {
         <div className={styles.sizeInputContainer}>
             <span>{useTotalSize ? 'Total Size' : 'Size'}</span>
             <NumFormattedInput
+                id='trade-module-size-input'
                 value={value}
                 onChange={onChange}
                 onBlur={onBlur}
@@ -56,26 +59,17 @@ const SizeInput: React.FC<PropsIF> = React.memo((props) => {
                 className={className}
                 aria-label={ariaLabel}
                 placeholder='Enter Size'
+                onFocus={onFocus}
             />
-            {/* <input
-                type='text'
-                value={value}
-                onChange={handleChange}
-                onBlur={onBlur}
-                onKeyDown={onKeyDown}
-                className={className}
-                aria-label={ariaLabel}
-                inputMode='numeric'
-                pattern='[0-9]*'
-                placeholder='Enter Size'
-            /> */}
             <button className={styles.tokenButton}>
                 <ComboBox
+                    key={selectedMode}
                     value={
-                        selectedMode === 'symbol' ? symbol.toUpperCase() : 'USD'
+                        selectedMode === 'usd' ? 'USD' : symbol.toUpperCase()
                     }
                     options={comboBoxOptions}
                     onChange={handleComboBoxChange}
+                    cssPositioning='fixed'
                 />
             </button>
         </div>

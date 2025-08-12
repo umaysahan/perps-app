@@ -10,6 +10,8 @@ const WatchList: React.FC = () => {
     const { favCoins, favKeys, symbol, addToFavKeys, removeFromFavKeys } =
         useTradeDataStore();
 
+    const whiteListedCoins = new Set(['BTC']);
+
     const [watchListMode, setWatchListMode] = useState<'dollar' | 'percent'>(
         'dollar',
     );
@@ -26,30 +28,39 @@ const WatchList: React.FC = () => {
 
     return (
         <div className={styles.watchListContainer}>
-            {/* show filled heart when active market is favorited */}
-            {favKeys.includes(symbol) ? (
-                <TbHeartFilled
-                    className={styles.favIcon}
-                    size={23}
-                    onClick={handleFavClick}
+            <div
+                id='watchlist-static-area'
+                className={styles.watchlistStaticArea}
+            >
+                {/* show filled heart when active market is favorited */}
+                {favKeys.includes(symbol) ? (
+                    <TbHeartFilled
+                        className={styles.favIcon}
+                        size={23}
+                        onClick={handleFavClick}
+                    />
+                ) : (
+                    <TbHeart
+                        className={styles.favIcon}
+                        size={23}
+                        onClick={handleFavClick}
+                    />
+                )}
+                <FiDollarSign
+                    onClick={() => setWatchListMode('dollar')}
+                    className={`${styles.watchListToolbarIcon} ${watchListMode === 'dollar' ? styles.active : ''}`}
                 />
-            ) : (
-                <TbHeart
-                    className={styles.favIcon}
-                    size={23}
-                    onClick={handleFavClick}
+                <FiPercent
+                    onClick={() => setWatchListMode('percent')}
+                    className={`${styles.watchListToolbarIcon} ${styles.percentIcon}  ${watchListMode === 'percent' ? styles.active : ''}`}
                 />
-            )}
-            <FiDollarSign
-                onClick={() => setWatchListMode('dollar')}
-                className={`${styles.watchListToolbarIcon} ${watchListMode === 'dollar' ? styles.active : ''}`}
-            />
-            <FiPercent
-                onClick={() => setWatchListMode('percent')}
-                className={`${styles.watchListToolbarIcon} ${styles.percentIcon}  ${watchListMode === 'percent' ? styles.active : ''}`}
-            />
+            </div>
 
-            <HorizontalScrollable className={styles.watchListLimitor}>
+            <HorizontalScrollable
+                excludes={['watchlist-static-area']}
+                wrapperId='trade-page-left-section'
+                offset={20}
+            >
                 <div className={styles.watchListNodesWrapper}>
                     {favCoins &&
                         favCoins.map((e) => (
@@ -60,6 +71,7 @@ const WatchList: React.FC = () => {
                                 prevDayPx={e.prevDayPx}
                                 isActive={false}
                                 showMode={watchListMode}
+                                disabled={!whiteListedCoins.has(e.coin)}
                             />
                         ))}
                 </div>

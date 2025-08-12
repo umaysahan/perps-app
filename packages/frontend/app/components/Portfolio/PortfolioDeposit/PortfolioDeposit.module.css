@@ -93,6 +93,17 @@
     font-size: var(--font-size-xs, 10px);
 }
 
+.minWarning {
+    color: #ff4d4f;
+    font-size: var(--font-size-xs, 10px);
+    margin-left: 4px;
+}
+
+.inputBelowMin {
+    border: 1px solid #ff4d4f !important;
+    outline: 1px solid #ff4d4f !important;
+}
+
 .contentContainer {
     width: 100%;
     display: flex;

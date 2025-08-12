@@ -81,7 +81,7 @@ export default function Tabs(props: TabsProps) {
 
     const {
         fetchedChannels,
-        userBalances: { length: balancesCount },
+        userBalances,
         positions: { length: positionsCount },
         userOrders: { length: openOrdersCount },
         activeTwaps: { length: activeTwapsCount },
@@ -95,6 +95,10 @@ export default function Tabs(props: TabsProps) {
     const getTabId = (tab: string | { id: string; label: string }): string => {
         return typeof tab === 'string' ? tab : tab.id;
     };
+
+    const balancesCount = userBalances.filter(
+        (balance) => balance.type === 'margin' && balance.available > 0,
+    ).length;
 
     // Function to get tab label (either the string itself or the label property)
     const getTabLabel = (

@@ -1,22 +1,26 @@
-import SimpleButton from '~/components/SimpleButton/SimpleButton';
-import type { MarginMode } from '../OrderInput';
+import { useState } from 'react';
 import styles from './MarginModal.module.css';
+import { type marginModesT } from '~/stores/TradeDataStore';
 
-interface PropsIF {
-    handleMarginModeChange: (mode: MarginMode) => void;
-    handleMarginModeConfirm: () => void;
-    activeMargin: MarginMode;
+interface propsIF {
+    initial: marginModesT;
+    handleConfirm: (m: marginModesT) => void;
 }
-export default function MarginModal(props: PropsIF) {
-    const { handleMarginModeChange, handleMarginModeConfirm, activeMargin } =
-        props;
+
+export default function MarginModal(props: propsIF) {
+    const { initial, handleConfirm } = props;
+
+    // hook to track current user selection until CTA is clicked
+    const [intermediate, setIntermediate] = useState<marginModesT>(initial);
 
     return (
-        <section className={styles.container}>
-            <div className={styles.contentContainer}>
+        <section className={styles.margin_modal_content}>
+            <div className={styles.margin_buttons}>
                 <button
-                    className={`${styles.content} ${activeMargin === 'cross' ? styles.selected : ''}`}
-                    onClick={() => handleMarginModeChange('cross')}
+                    className={
+                        styles[intermediate === 'cross' ? 'selected' : '']
+                    }
+                    onClick={() => setIntermediate('cross')}
                 >
                     <h3>Cross Margin</h3>
                     <p>
@@ -27,8 +31,10 @@ export default function MarginModal(props: PropsIF) {
                     </p>
                 </button>
                 <button
-                    className={`${styles.content} ${activeMargin === 'isolated' ? styles.selected : ''}`}
-                    onClick={() => handleMarginModeChange('isolated')}
+                    className={
+                        styles[intermediate === 'isolated' ? 'selected' : '']
+                    }
+                    onClick={() => setIntermediate('isolated')}
                 >
                     <h3>Isolated Mode</h3>
                     <p>
@@ -40,13 +46,7 @@ export default function MarginModal(props: PropsIF) {
                     </p>
                 </button>
             </div>
-            <SimpleButton
-                bg='accent1'
-                onClick={() => handleMarginModeConfirm()}
-                style={{ height: '47px' }}
-            >
-                Confirm
-            </SimpleButton>
+            <button onClick={() => handleConfirm(intermediate)}>Confirm</button>
         </section>
     );
 }

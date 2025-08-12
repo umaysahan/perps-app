@@ -10,6 +10,8 @@ interface OrderHistoryTableHeaderProps {
     sortClickHandler: (key: OrderDataSortBy) => void;
 }
 
+const showTpSl = false;
+
 export const OrderHistoryTableModel:
     | HeaderCell<number>[]
     | HeaderCell<string>[] = [
@@ -20,7 +22,7 @@ export const OrderHistoryTableModel:
         className: 'timeCell',
         exportable: true,
         exportAction: (data: number) => {
-            return formatTimestamp(data).replaceAll(',', ' ');
+            return formatTimestamp(data).replaceAll(';', ' ');
         },
     },
     {
@@ -43,6 +45,9 @@ export const OrderHistoryTableModel:
         sortable: true,
         className: 'directionCell',
         exportable: true,
+        exportAction: (data: number) => {
+            return data.toString() === 'sell' ? 'Short' : 'Long';
+        },
     },
     {
         name: 'Size',
@@ -50,6 +55,9 @@ export const OrderHistoryTableModel:
         sortable: true,
         className: 'sizeCell',
         exportable: true,
+        exportAction: (v: number) => {
+            return v > 0 ? Number(v.toFixed(4)).toString() : '--';
+        },
     },
     {
         name: 'Filled Size',
@@ -64,6 +72,7 @@ export const OrderHistoryTableModel:
         sortable: true,
         className: 'orderValueCell',
         exportable: true,
+        exportAction: (v: number) => v.toFixed(3),
     },
     {
         name: 'Price',
@@ -71,6 +80,12 @@ export const OrderHistoryTableModel:
         sortable: true,
         className: 'priceCell',
         exportable: true,
+        exportAction: (v: number) =>
+            v.toLocaleString('en-US', {
+                useGrouping: false,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }),
     },
     {
         name: 'Reduce Only',
@@ -78,6 +93,9 @@ export const OrderHistoryTableModel:
         sortable: true,
         className: 'reduceOnlyCell',
         exportable: true,
+        exportAction: (data: boolean | string) => {
+            return data === false ? 'No' : '--';
+        },
     },
     {
         name: 'Trigger Conditions',
@@ -86,16 +104,21 @@ export const OrderHistoryTableModel:
         className: 'triggerConditionsCell',
         exportable: true,
     },
-    {
-        name: 'TP/SL',
-        key: 'triggerPx',
-        sortable: true,
-        className: 'tpslCell',
-        exportable: true,
-        exportAction: (data: number | null) => {
-            return data && data > 0 ? data.toString() : '';
-        },
-    },
+    ...(showTpSl
+        ? [
+              {
+                  name: 'TP/SL',
+                  key: 'triggerPx',
+                  sortable: true,
+                  className: 'tpslCell',
+                  exportable: true,
+                  exportAction: (data: number | null) => {
+                      console.log(data);
+                      return data && data > 0 ? data.toString() : '--';
+                  },
+              },
+          ]
+        : []),
     {
         name: 'Status',
         key: 'status',
@@ -108,6 +131,8 @@ export const OrderHistoryTableModel:
         key: 'oid',
         sortable: true,
         className: 'orderIdCell',
+        exportable: true,
+        exportAction: (v: number) => String(v),
     },
 ];
 
@@ -117,7 +142,9 @@ export default function OrderHistoryTableHeader(
     const { sortBy, sortDirection, sortClickHandler } = props;
 
     return (
-        <div className={styles.headerContainer}>
+        <div
+            className={`${styles.headerContainer} ${!showTpSl ? styles.noTpSl : ''}`}
+        >
             {OrderHistoryTableModel.map((header) => (
                 <div
                     key={header.key}

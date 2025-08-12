@@ -25,6 +25,7 @@ export interface SymbolInfoRawIF {
     ctx: AssetCtxRawIF;
 }
 export interface SymbolInfoIF {
+    symbol: string;
     coin: string;
     dayBaseVlm: number;
     dayNtlVlm: number;

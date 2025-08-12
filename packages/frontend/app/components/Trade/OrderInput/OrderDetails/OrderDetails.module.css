@@ -1,67 +1,10 @@
-.place_order_buttons {
-    --container-height: 125px;
+.order_details {
     --input-detail-item-height: 16px;
-    --button-font-size: 16px;
     --scroll-icon-width-height: 12px;
     --scroll-button-width: 24px;
     --scroll-button-height: 16px;
 
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-s);
-    height: var(--container-height);
-    justify-content: flex-end;
-}
-
-/* When expanded, allow container to grow but anchor to bottom- please dont change anything here , for any reason without Jr's Approval */
-.place_order_buttons:has(.input_details.expanded) {
-    height: auto;
-    min-height: var(--container-height);
-}
-
-.buttons_wrapper {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--gap-s);
-}
-
-.buttons_wrapper > button {
-    display: flex;
-    padding: var(--button-padding);
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    border-radius: var(--radius-s);
-    color: var(--text1, #f0f0f8);
-    font-size: var(--button-font-size);
-    outline: none;
-    border: none;
-    height: 47px !important;
-}
-
-.overlay_button {
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.overlay_button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0);
-    transition: background 0.2s ease;
-    pointer-events: none;
-}
-
-.overlay_button:hover::before {
-    background: rgba(0, 0, 0, 0.2);
-}
-
-.input_details {
+    margin-top: var(--margin-s);
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -85,7 +28,7 @@
     position: relative;
 }
 
-.input_details.expanded .details_viewport {
+.order_details.expanded .details_viewport {
     overflow: visible;
 }
 
@@ -147,11 +90,6 @@
 .scroll_icon {
     width: var(--scroll-icon-width-height);
     height: var(--scroll-icon-width-height);
-}
-
-.scroll_button:hover {
-    color: var(--text1);
-    background: var(--bg-dark2, #0f0f14);
 }
 
 .details_viewport::before,

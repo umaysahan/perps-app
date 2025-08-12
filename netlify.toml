@@ -111,6 +111,19 @@
   to = "/"
   status = 200
 
+# Redirect exactly "/v2" (no trailing slash)
+[[redirects]]
+  from = "/v2"
+  to = "/v2/trade/BTC"
+  status = 302
+
+# Redirect exactly "/v2/" (with trailing slash)
+[[redirects]]
+  from = "/v2/"
+  to = "/v2/trade/BTC"
+  status = 302
+
+# Catch-all for everything else under `/v2/` (e.g. /v2/something)
 [[redirects]]
   from = "/v2/*"
   to = "/index.html"

@@ -9,6 +9,10 @@
     align-items: center;
 }
 
+.rowContainer.noSendButton {
+    grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1fr 1.5fr;
+}
+
 .headerContainer {
     background: var(--bg-dark2);
     width: 100%;
@@ -23,6 +27,10 @@
     top: 0;
 
     z-index: 10;
+}
+
+.headerContainer.noSendButton {
+    grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1fr 1.5fr;
 }
 
 .cell {
@@ -92,6 +100,11 @@
         grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1.5fr 0.5fr;
     }
 
+    .rowContainer.noSendButton,
+    .headerContainer.noSendButton {
+        grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1.5fr;
+    }
+
     .buyingPowerCell {
         display: none;
     }
@@ -101,6 +114,11 @@
     .rowContainer,
     .headerContainer {
         grid-template-columns: 1fr 1.5fr 1fr 1fr 1.5fr 0.5fr;
+    }
+
+    .rowContainer.noSendButton,
+    .headerContainer.noSendButton {
+        grid-template-columns: 1fr 1.5fr 1fr 1fr 1.5fr;
     }
 
     .availableBalanceCell {
@@ -114,6 +132,11 @@
         grid-template-columns: 1fr 1.5fr 1fr 1.5fr 0.5fr;
     }
 
+    .rowContainer.noSendButton,
+    .headerContainer.noSendButton {
+        grid-template-columns: 1fr 1.5fr 1fr 1.5fr;
+    }
+
     .pnlCell {
         display: none;
     }
@@ -123,6 +146,11 @@
     .rowContainer,
     .headerContainer {
         grid-template-columns: 1fr 1fr 1fr 0.5fr;
+    }
+
+    .rowContainer.noSendButton,
+    .headerContainer.noSendButton {
+        grid-template-columns: 1fr 1fr 1fr;
     }
 
     .totalBalanceCell {

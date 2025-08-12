@@ -1,6 +1,6 @@
 import { memo, useRef, useState } from 'react';
 import Modal from '~/components/Modal/Modal';
-import PerformancePanel from '~/components/Portfolio/PerformancePanel/PerformancePanel';
+// import PerformancePanel from '~/components/Portfolio/PerformancePanel/PerformancePanel';
 import TradeTable from '~/components/Trade/TradeTables/TradeTables';
 import { useModal } from '~/hooks/useModal';
 import { feeSchedules, type feeTierIF } from '~/utils/feeSchedule';
@@ -12,8 +12,9 @@ import SimpleButton from '~/components/SimpleButton/SimpleButton';
 import { MdOutlineArrowDropDownCircle } from 'react-icons/md';
 import useOutsideClick from '~/hooks/useOutsideClick';
 import useNumFormatter from '~/hooks/useNumFormatter';
+import Tooltip from '~/components/Tooltip/Tooltip';
 
-const MemoizedPerformancePanel = memo(PerformancePanel);
+// const MemoizedPerformancePanel = memo(PerformancePanel);
 
 export function meta() {
     return [
@@ -78,7 +79,12 @@ function Portfolio() {
                 className={`${styles.detailsContent} ${styles.netValueMobile}`}
             >
                 <h6>Total USD Val</h6>
-                <h3>{currency(portfolio.totalValueUSD, true)}</h3>
+                <h3>
+                    {currency(
+                        portfolio.balances.contract + portfolio.balances.wallet,
+                        true,
+                    )}
+                </h3>
             </div>
             <button
                 ref={mobileActionMenuButtonRef}
@@ -104,7 +110,7 @@ function Portfolio() {
                     >
                         Withdraw
                     </SimpleButton>
-                    <SimpleButton
+                    {/* <SimpleButton
                         onClick={openSendModal}
                         className={styles.sendMobile}
                         bg='dark3'
@@ -120,7 +126,7 @@ function Portfolio() {
                         hoverBg='accent1'
                     >
                         Send
-                    </SimpleButton>
+                    </SimpleButton> */}
                 </div>
             )}
         </section>
@@ -134,7 +140,7 @@ function Portfolio() {
                 <div className={styles.column}>
                     {mobileTop}
                     <div className={styles.detailsContainer}>
-                        <div className={styles.detailsContent}>
+                        {/* <div className={styles.detailsContent}>
                             <h6>14 Day Volume</h6>
                             <h3>
                                 {formatCurrency(
@@ -144,16 +150,16 @@ function Portfolio() {
                             <div
                                 className={styles.view_detail_clickable}
                                 onClick={() => console.log('viewing volume')}
+                                style={{ visibility: 'hidden' }}
                             >
                                 View volume
                             </div>
-                        </div>
+                        </div> */}
                         <div className={styles.detailsContent}>
-                            <h6>Fees (Taker / Maker)</h6>
-                            <h3>
-                                {portfolio.fees.taker}% / {portfolio.fees.maker}
-                                %
-                            </h3>
+                            <h6>Fees</h6>
+                            <Tooltip content='Maker fees 0.1%' position='top'>
+                                <h3>Always 0.00%</h3>
+                            </Tooltip>
                             <div
                                 className={styles.view_detail_clickable}
                                 style={{ visibility: 'hidden' }}
@@ -166,12 +172,20 @@ function Portfolio() {
                             className={`${styles.detailsContent} ${styles.netValueMobile}`}
                         >
                             <h6>Total Net USD Value</h6>
-                            <h3>{formatCurrency(portfolio.totalValueUSD)}</h3>
+                            <h3>
+                                {formatCurrency(
+                                    portfolio.balances.contract +
+                                        portfolio.balances.wallet,
+                                )}
+                            </h3>
                         </div>
                         <div className={styles.totalNetDisplay}>
                             <h6>
                                 <span>Total Net USD Value:</span>{' '}
-                                {formatCurrency(portfolio.totalValueUSD)}
+                                {formatCurrency(
+                                    portfolio.balances.contract +
+                                        portfolio.balances.wallet,
+                                )}
                             </h6>
                             <div className={styles.buttonContainer}>
                                 <div className={styles.rowButton}>
@@ -197,20 +211,20 @@ function Portfolio() {
                                         Send
                                     </SimpleButton>
                                 </div>
-                                <SimpleButton
+                                {/* <SimpleButton
                                     onClick={openSendModal}
                                     className={styles.sendDesktop}
                                     bg='dark3'
                                     hoverBg='accent1'
                                 >
                                     Send
-                                </SimpleButton>
+                                </SimpleButton> */}
                             </div>
                         </div>
                     </div>
 
                     <section className={styles.mainContent}>
-                        <MemoizedPerformancePanel />
+                        {/* <MemoizedPerformancePanel /> */}
 
                         <div className={styles.table}>
                             <TradeTable portfolioPage />

@@ -70,10 +70,14 @@ body {
 .containerTopLeft {
     height: 100%;
     display: grid;
-    grid-template-rows: 30px 40px 40px 1fr;
+    grid-template-rows: 40px 40px 1fr;
     width: 100%;
 
     gap: var(--gap-s);
+}
+
+.containerTopLeft.debugToolbarOpen {
+    grid-template-rows: 30px 40px 40px 1fr;
 }
 
 .watchlist,
@@ -312,4 +316,8 @@ body {
     .containerBottom {
         display: none;
     }
+}
+
+.debugToolbar {
+    transition: all 0.2s ease-in-out;
 }

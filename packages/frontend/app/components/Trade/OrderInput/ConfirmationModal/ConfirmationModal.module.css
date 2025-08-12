@@ -57,6 +57,46 @@
 .white {
     color: var(--text1);
 }
+
+.confirmButton {
+    width: 100%;
+    height: 47px;
+    padding: var(--button-padding, 12px 16px);
+    border: none;
+    border-radius: var(--radius-s, 8px);
+    font-size: var(--font-size-m, 18px);
+    cursor: pointer;
+    color: var(--text1, #f0f0f8);
+    transition: background-color 0.3s ease;
+    /* background: var(--accent1); */
+}
+.confirmButton:disabled {
+    background: var(--bg-dark4, #27272c);
+    color: var(--text2, #bcbcc4);
+    cursor: not-allowed;
+}
+.confirmButton:disabled:hover {
+    background: var(--bg-dark4, #27272c);
+    color: var(--text2, #bcbcc4);
+    cursor: not-allowed;
+}
+.confirmButton::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0);
+    border-radius: var(--radius-s, 8px);
+    transition: background 0.3s ease;
+    pointer-events: none;
+}
+
+.confirmButton:hover::before {
+    background: rgba(0, 0, 0, 0.15);
+}
+
 @media (max-width: 768px) {
     .container {
         width: auto;

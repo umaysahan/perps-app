@@ -2,40 +2,63 @@ import styles from './ConfirmationModal.module.css';
 import Tooltip from '~/components/Tooltip/Tooltip';
 import { AiOutlineQuestionCircle } from 'react-icons/ai';
 import ToggleSwitch from '../../ToggleSwitch/ToggleSwitch';
-import SimpleButton from '~/components/SimpleButton/SimpleButton';
 import type { modalContentT } from '../OrderInput';
+import { useAppSettings } from '~/stores/AppSettingsStore';
 
 interface propsIF {
     tx: modalContentT;
+    submitFn: () => void;
     size: {
         qty: string;
         denom: string;
     };
     limitPrice?: string;
-    onClose: () => void;
     isEnabled: boolean;
     toggleEnabled: () => void;
+    isProcessing?: boolean;
 }
 type InfoItem = {
     label: string;
     value: string;
     tooltip?: string;
     className?: string;
+    valueStyle?: React.CSSProperties;
 };
 
 export default function ConfirmationModal(props: propsIF) {
-    const { onClose, tx, isEnabled, toggleEnabled, size, limitPrice } = props;
+    const {
+        submitFn,
+        tx,
+        isEnabled,
+        toggleEnabled,
+        size,
+        limitPrice,
+        isProcessing,
+    } = props;
+
+    const { getBsColor } = useAppSettings();
+
+    const buyColor = getBsColor().buy;
+    const sellColor = getBsColor().sell;
 
     const dataInfo: InfoItem[] = [
         {
             label: 'Action',
             value: tx.includes('buy') ? 'Buy' : 'Sell',
-            className: styles[tx.includes('buy') ? 'green' : 'red'],
+            valueStyle: {
+                color: tx.includes('buy')
+                    ? getBsColor().buy
+                    : getBsColor().sell,
+            },
         },
         {
             label: 'Size',
             value: `${size.qty || '--'} ${size.denom}`,
-            className: styles[tx.includes('buy') ? 'green' : 'red'],
+            valueStyle: {
+                color: tx.includes('buy')
+                    ? getBsColor().buy
+                    : getBsColor().sell,
+            },
         },
         {
             label: 'Price',
@@ -77,6 +100,9 @@ export default function ConfirmationModal(props: propsIF) {
                             className={`${styles.infoValue} ${
                                 info?.className && info.className
                             }`}
+                            style={{
+                                ...info?.valueStyle,
+                            }}
                         >
                             {info.value}
                         </div>
@@ -91,13 +117,22 @@ export default function ConfirmationModal(props: propsIF) {
                     // reverse
                 />
             </div>
-            <SimpleButton
-                bg='accent1'
-                onClick={onClose}
-                style={{ height: '47px' }}
+            <button
+                className={styles.confirmButton}
+                onClick={isProcessing ? undefined : submitFn}
+                style={{
+                    height: '47px',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    backgroundColor: tx.includes('buy') ? buyColor : sellColor,
+                }}
+                disabled={isProcessing}
             >
-                {tx.includes('buy') ? 'Buy / Long' : 'Sell / Short'}
-            </SimpleButton>
+                {isProcessing
+                    ? 'Confirming Transaction...'
+                    : tx.includes('buy')
+                      ? 'Buy / Long'
+                      : 'Sell / Short'}
+            </button>
         </div>
     );
 }

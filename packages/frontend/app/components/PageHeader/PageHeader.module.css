@@ -47,6 +47,7 @@
     color: var(--accent1, #7371fc) !important;
     cursor: pointer;
     font-size: var(--font-family-m, 18px);
+    visibility: hidden;
 }
 
 .ambientmm:hover {
@@ -58,11 +59,11 @@
     outline: none;
     background: transparent;
     border: none;
-    text-transform: capitalize;
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: var(--gap-s);
+    display: none;
 }
 
 .container nav a:hover,
@@ -254,6 +255,18 @@
 
 .networkButton:hover {
     color: var(--text1, #f0f0f8);
+}
+
+.geofence_modal {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 300px;
+    height: auto;
+    margin: var(--margin-m);
+    font-size: var(--font-size-s);
+    color: var(--text2);
+    text-align: center;
 }
 
 @keyframes bounce {

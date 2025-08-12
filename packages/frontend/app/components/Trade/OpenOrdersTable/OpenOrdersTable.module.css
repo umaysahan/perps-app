@@ -8,6 +8,10 @@
     align-items: center;
 }
 
+.rowContainer.noTpSl {
+    grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 1fr 0.8fr;
+}
+
 .headerContainer {
     background: var(--bg-dark2);
     width: 100%;
@@ -22,6 +26,10 @@
     top: 0;
 
     z-index: 10;
+}
+
+.headerContainer.noTpSl {
+    grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 1fr 0.8fr;
 }
 
 .cell {
@@ -95,6 +103,11 @@
         grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr;
     }
 
+    .rowContainer.noTpSl,
+    .headerContainer.noTpSl {
+        grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 1fr 0.8fr;
+    }
+
     .originalSizeCell {
         display: none;
     }
@@ -104,6 +117,11 @@
     .rowContainer,
     .headerContainer {
         grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr;
+    }
+
+    .rowContainer.noTpSl,
+    .headerContainer.noTpSl {
+        grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.8fr;
     }
 
     .triggerConditionsCell {
@@ -117,6 +135,11 @@
         grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr 0.8fr;
     }
 
+    .rowContainer.noTpSl,
+    .headerContainer.noTpSl {
+        grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr;
+    }
+
     .reduceOnlyCell {
         display: none;
     }
@@ -126,6 +149,11 @@
     .rowContainer,
     .headerContainer {
         grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr;
+    }
+
+    .rowContainer.noTpSl,
+    .headerContainer.noTpSl {
+        grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr;
     }
 
     .typeCell {
@@ -139,6 +167,11 @@
         grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr;
     }
 
+    .rowContainer.noTpSl,
+    .headerContainer.noTpSl {
+        grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr;
+    }
+
     .priceCell {
         display: none;
     }
@@ -148,6 +181,11 @@
     .rowContainer,
     .headerContainer {
         grid-template-columns: 1fr 0.8fr 0.8fr 1fr 0.8fr 0.8fr;
+    }
+
+    .rowContainer.noTpSl,
+    .headerContainer.noTpSl {
+        grid-template-columns: 1fr 0.8fr 0.8fr 1fr 0.8fr;
     }
 
     .sizeCell {
@@ -161,6 +199,11 @@
         grid-template-columns: 1fr 0.8fr 1fr 0.8fr 0.8fr;
     }
 
+    .rowContainer.noTpSl,
+    .headerContainer.noTpSl {
+        grid-template-columns: 1fr 0.8fr 1fr 0.8fr;
+    }
+
     .coinCell {
         display: none;
     }
@@ -171,6 +214,11 @@
     .headerContainer {
         grid-template-columns: 1fr 0.8fr 1fr 0.8fr;
         padding: 0 var(--padding-xs);
+    }
+
+    .rowContainer.noTpSl,
+    .headerContainer.noTpSl {
+        grid-template-columns: 1fr 0.8fr 1fr 0.8fr;
     }
 
     .directionCell {

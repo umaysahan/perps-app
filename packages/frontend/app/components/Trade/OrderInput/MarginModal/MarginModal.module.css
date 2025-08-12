@@ -1,71 +1,66 @@
-.container {
+/* top-level return for `MarginModal.tsx` file */
+.margin_modal_content {
     display: flex;
-    width: 708px;
-    height: auto;
-    padding: var(--padding-s) var(--padding-m) var(--padding-m) 16px;
     flex-direction: column;
-    align-items: flex-start;
-    gap: var(--gap-s);
-}
-.container header {
-    width: 100%;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-}
-.container header h3 {
-    font-size: var(--font-size-l, 24px);
+    padding: var(--padding-s) var(--padding-m) var(--padding-m) 16px;
+    gap: var(--gap-m);
 }
 
-.container header svg {
-    cursor: pointer;
-    fill: var(--text2);
-}
-.container header svg:hover {
-    fill: var(--text1);
-}
-.contentContainer {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--gap-m);
-}
-.content {
-    border-radius: var(--radius-m, 16px);
-    border: 1px solid var(--bg-dark4);
-    /* border: 1px solid var(--base-accent1, #7371FC); */
-    background: var(--bg-dark4, #27272c);
+/* wrapper for the two margin mode buttons */
+.margin_buttons {
     display: flex;
-    padding: var(--padding-m);
+    flex-direction: row;
+    gap: var(--gap-m);
+
+    /* centralized CSS for border to apply situationally */
+    --margin_modal_button_border: 1px solid var(--accent1);
+}
+
+/* clickable buttons to change the current margin mode */
+.margin_buttons > button {
+    display: flex;
     flex-direction: column;
     align-items: center;
+    /* width is specified in Figma */
+    width: 340px;
     gap: var(--gap-m);
-    flex: 1 0 0;
-    align-self: stretch;
-    color: var(--text2, #bcbcc4);
-    cursor: pointer;
+    padding: var(--padding-m);
+    border: 1px solid var(--bg-dark4);
+    border-radius: var(--radius-m, 16px);
     font-size: var(--font-size-s, 12px);
-    transition: all var(--ease-in-out-med);
+    color: var(--text2, #bcbcc4);
+    background-color: var(--bg-dark4, #27272c);
     text-align: start;
+    transition: all var(--ease-in-out-med);
 }
-.content:hover {
-    border: 1px solid var(--accent1);
+
+/* hover effect for margin mode buttons */
+.margin_buttons > button:hover {
+    border: var(--margin_modal_button_border);
 }
-.content h3 {
+
+/* headline text inside each margin mode button */
+.margin_buttons > button > h3 {
     font-size: var(--font-size-m, 18px);
     color: var(--text1);
 }
+
+/* main CTA to accept current selection and close the modal */
+.margin_modal_content > button {
+    padding: 12px var(--padding-m);
+    width: 100%;
+    background-color: var(--accent1);
+    border-radius: var(--radius-s);
+    font-size: var(--font-size-m);
+}
+
+/* CSS to add the purple border to whichever button is clicked */
 .selected {
-    border: 1px solid var(--accent1, #7371fc);
+    border: var(--margin_modal_button_border) !important;
 }
 
 @media (max-width: 768px) {
-    .container {
+    .margin_modal_content {
         width: auto;
-    }
-
-    .contentContainer {
-        display: flex;
-        flex-direction: column;
     }
 }

@@ -1,0 +1,136 @@
+:root {
+    --480-h2-fs: 2.25rem;
+    --480-h2-lh: 2.5rem;
+    --480-p-fs: 1.125rem;
+    --480-p-lh: 1.75rem;
+    --desktop-h2-fs: 4.5rem;
+    --desktop-h2-lh: normal;
+    --desktop-p-fs: 2.25rem;
+    --desktop-p-lh: normal;
+}
+
+/* Sub Container */
+.sub_container {
+    max-width: 120rem;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 0 12px;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2rem;
+    flex-shrink: 0;
+    height: 100%;
+}
+
+.sub_container h2 {
+    color: var(--text1, #f0f0f8);
+    font-family: 'Lexend Deca';
+    font-size: var(--header1-size);
+    line-height: var(--header1-lh);
+    font-style: normal;
+    font-weight: 200;
+}
+
+.smaller_gap {
+    gap: 75px;
+}
+
+/* Investors Container */
+.investors_container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.investors_container img {
+    margin-top: 0 !important;
+}
+
+.investors_container img:last-of-type {
+    grid-column: span 2;
+}
+
+/* Media Queries */
+@media (min-width: 480px) {
+    .sub_container h2 {
+        font-size: var(--480-h2-fs);
+        line-height: var(--480-h2-lh);
+    }
+}
+
+@media (min-width: 520px) {
+    .investors_container {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .investors_container img:nth-of-type(16),
+    .investors_container img:nth-of-type(17) {
+        grid-column: span 3;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+@media (min-width: 740px) {
+    .sub_container {
+        padding: 48px 90px;
+    }
+}
+
+@media (min-width: 820px) {
+    .sub_container h2 {
+        line-height: normal;
+    }
+}
+
+@media (min-width: 1080px) {
+    .investors_container {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .investors_container img:nth-of-type(17) {
+        margin-right: 45%;
+    }
+
+    .investors_container img:nth-of-type(16),
+    .investors_container img:nth-of-type(17) {
+        margin-left: 45%;
+        grid-column: span 1;
+        width: 100%;
+    }
+
+    .sub_container {
+        gap: 128px;
+    }
+
+    .smaller_gap {
+        gap: 75px;
+    }
+
+    .sub_container h2 {
+        font-size: 54px;
+    }
+
+    .sub_container {
+        padding: 48px 160px;
+    }
+
+    .investors_container img {
+        width: 469px;
+        height: auto;
+    }
+}
+
+@media (min-width: 1600px) {
+    .sub_container {
+        padding: 64px 214px;
+    }
+
+    .sub_container h2 {
+        font-size: 72px;
+    }
+}

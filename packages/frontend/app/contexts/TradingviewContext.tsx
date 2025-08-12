@@ -35,6 +35,7 @@ import {
 } from '~/routes/chart/data/utils/utils';
 import { useAppOptions } from '~/stores/AppOptionsStore';
 import { useAppSettings, type colorSetIF } from '~/stores/AppSettingsStore';
+import { useAppStateStore } from '~/stores/AppStateStore';
 import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import {
@@ -42,10 +43,10 @@ import {
     type IBasicDataFeed,
     type IChartingLibraryWidget,
     type IDatafeedChartApi,
-    type LibrarySymbolInfo,
     type ResolutionString,
     type TradingTerminalFeatureset,
 } from '~/tv/charting_library';
+import { processSymbolUrlParam } from '~/utils/AppUtils';
 
 interface TradingViewContextType {
     chart: IChartingLibraryWidget | null;
@@ -77,7 +78,7 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const { info, lastSleepMs, lastAwakeMs } = useSdk();
 
-    const { symbol } = useTradeDataStore();
+    const { symbol, addToFetchedChannels } = useTradeDataStore();
 
     const [chartState, setChartState] = useState<ChartLayout | null>();
 
@@ -91,8 +92,13 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const dataFeedRef = useRef<IDatafeedChartApi | null>(null);
 
-    const [isChartReady, setIsChartReady] = useState(false);
+    const { debugToolbarOpen, setDebugToolbarOpen } = useAppStateStore();
+    const debugToolbarOpenRef = useRef(debugToolbarOpen);
+    debugToolbarOpenRef.current = debugToolbarOpen;
+
     const { marketId } = useParams<{ marketId: string }>();
+
+    const [isChartReady, setIsChartReady] = useState(false);
     useEffect(() => {
         const res = getChartLayout();
         if (res?.interval) {
@@ -198,13 +204,15 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
     const initChart = useCallback(() => {
         if (!info) return;
 
-        dataFeedRef.current = createDataFeed(info);
+        dataFeedRef.current = createDataFeed(info, addToFetchedChannels);
+
+        const processedSymbol = processSymbolUrlParam(marketId || 'BTC');
 
         const tvWidget = new widget({
             container: 'tv_chart',
             library_path: defaultProps.libraryPath,
             timezone: 'Etc/UTC',
-            symbol: marketId,
+            symbol: processedSymbol,
             fullscreen: false,
             autosize: true,
             datafeed: dataFeedRef.current as IBasicDataFeed,
@@ -248,6 +256,70 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
                 priceFormatterFactory: priceFormatterFactory,
             },
         });
+
+        // tvWidget.headerReady().then(() => {
+        //     const liquidationsButton = tvWidget.createButton();
+
+        //     let isToggled = false;
+
+        //     const updateButtonStyle = () => {
+        //         const svg = getLiquidationsSvgIcon(
+        //             isToggled ? '#7371fc' : '#cbcaca',
+        //         );
+        //         liquidationsButton.style.color = isToggled
+        //             ? '#7371fc'
+        //             : '#cbcaca';
+
+        //         liquidationsButton.innerHTML = `
+        //             <span class="liquidations-wrapper" style="display: flex; align-items: center;border-radius:4px;padding:5px">
+        //               ${svg}
+        //              <span style="padding-left:3px"> Liquidations
+        //              </span>`;
+        //     };
+
+        //     updateButtonStyle();
+
+        //     const onClick = () => {
+        //         isToggled = !isToggled;
+        //         updateButtonStyle();
+
+        //         if (isToggled) {
+        //             console.log('Open');
+        //         } else {
+        //             console.log('Close');
+        //         }
+        //     };
+        //     const onMouseEnter = () => {
+        //         const wrapper = liquidationsButton.querySelector(
+        //             '.liquidations-wrapper',
+        //         ) as HTMLDivElement;
+        //         if (wrapper) {
+        //             wrapper.style.backgroundColor = '#313030';
+        //         }
+        //     };
+        //     const onMouseLeave = () => {
+        //         const wrapper = liquidationsButton.querySelector(
+        //             '.liquidations-wrapper',
+        //         ) as HTMLDivElement;
+        //         if (wrapper) wrapper.style.backgroundColor = 'transparent';
+        //     };
+
+        //     liquidationsButton.addEventListener('click', onClick);
+        //     liquidationsButton.addEventListener('mouseenter', onMouseEnter);
+        //     liquidationsButton.addEventListener('mouseleave', onMouseLeave);
+
+        //     return () => {
+        //         liquidationsButton.removeEventListener('click', onClick);
+        //         liquidationsButton.removeEventListener(
+        //             'mouseenter',
+        //             onMouseEnter,
+        //         );
+        //         liquidationsButton.removeEventListener(
+        //             'mouseleave',
+        //             onMouseLeave,
+        //         );
+        //     };
+        // });
 
         tvWidget.onChartReady(() => {
             /**
@@ -314,6 +386,43 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
 
         return intervalNum * coef;
     }, []);
+
+    useEffect(() => {
+        const chartDiv = document.getElementById('tv_chart');
+        const iframe = chartDiv?.querySelector('iframe') as HTMLIFrameElement;
+        const iframeDoc =
+            iframe?.contentDocument || iframe?.contentWindow?.document;
+
+        const blockSymbolSearchKeys = (e: KeyboardEvent) => {
+            const isSingleChar = e.key.length === 1;
+            const isAlphaNumeric = /^[a-zA-Z0-9]$/.test(e.key);
+
+            if (e.code === 'KeyD' && e.altKey) {
+                e.preventDefault();
+                setDebugToolbarOpen(!debugToolbarOpenRef.current);
+            }
+            if (
+                !e.ctrlKey &&
+                !e.altKey &&
+                !e.metaKey &&
+                isSingleChar &&
+                isAlphaNumeric
+            ) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
+
+        iframeDoc?.addEventListener('keydown', blockSymbolSearchKeys, true);
+
+        return () => {
+            iframeDoc?.removeEventListener(
+                'keydown',
+                blockSymbolSearchKeys,
+                true,
+            );
+        };
+    }, [chart]);
 
     useEffect(() => {
         if (lastAwakeMs > lastSleepMs && lastSleepMs > 0) {

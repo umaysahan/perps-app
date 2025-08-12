@@ -6,6 +6,8 @@ import LabelComponent from './component/LabelComponent';
 import { useTradingView } from '~/contexts/TradingviewContext';
 import type { IPaneApi } from '~/tv/charting_library';
 import type { LabelLocationData } from '../overlayCanvas/overlayCanvasUtils';
+import { getPricetoPixel } from './customOrderLineUtils';
+import { MIN_VISIBLE_ORDER_LABEL_RATIO } from '~/utils/Constants';
 
 export type OrderLinesProps = {
     overlayCanvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
@@ -31,6 +33,7 @@ export default function OrderLines({
     const positionLines = usePositionOrderLines();
 
     const [lines, setLines] = useState<LineData[]>([]);
+    const [visibleLines, setVisibleLines] = useState<LineData[]>([]);
 
     const [zoomChanged, setZoomChanged] = useState(false);
     const prevRangeRef = useRef<{ min: number; max: number } | null>(null);
@@ -115,18 +118,61 @@ export default function OrderLines({
         };
     }, [chart, scaleData]);
 
+    useEffect(() => {
+        if (!scaleData || !lines.length || !chart || !canvasSize) return;
+
+        const [minY, maxY] = scaleData.yScale.domain();
+
+        const filtered = lines.filter((line) => {
+            const height = canvasSize.height;
+
+            const labelInformation = getPricetoPixel(
+                chart,
+                line.yPrice,
+                line.type,
+                height,
+                scaleData,
+            );
+            const yPricePixel = labelInformation.pixel;
+
+            const visibleBuffer =
+                labelInformation.textHeight * MIN_VISIBLE_ORDER_LABEL_RATIO;
+            const labelMaxPixel = Math.ceil(
+                yPricePixel + labelInformation.textHeight,
+            );
+
+            const isVisibleEnough =
+                Math.min(labelMaxPixel, height) - Math.max(yPricePixel, 0) >=
+                visibleBuffer;
+
+            const max = Math.max(minY, maxY);
+            const min = Math.min(minY, maxY);
+            return (
+                (line.yPrice >= min && line.yPrice <= max && isVisibleEnough) ||
+                (selectedLine && line.oid === selectedLine?.parentLine.oid)
+            );
+        });
+
+        setVisibleLines(filtered);
+    }, [
+        lines,
+        canvasSize,
+        selectedLine,
+        JSON.stringify(scaleData?.yScale.domain()),
+    ]);
+
     return (
         <>
             <LineComponent
                 key='lines'
-                lines={lines}
+                lines={visibleLines}
                 localChartReady={localChartReady}
                 setLocalChartReady={setLocalChartReady}
             />
             {localChartReady && (
                 <LabelComponent
                     key='labels'
-                    lines={lines}
+                    lines={visibleLines}
                     overlayCanvasRef={overlayCanvasRef}
                     zoomChanged={zoomChanged}
                     canvasSize={canvasSize}

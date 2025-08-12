@@ -1,15 +1,20 @@
+import type { MarginBucketInfo } from '@crocswap-libs/ambient-ember';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { TransactionData } from '~/components/Trade/DepositsWithdrawalsTable/DepositsWithdrawalsTableRow';
 import { setLS } from '~/utils/AppUtils';
 import type { OrderDataIF } from '~/utils/orderbook/OrderBookIFs';
-import type { SymbolInfoIF } from '~/utils/SymbolInfoIFs';
+import type { SymbolInfoIF, TokenDetailsIF } from '~/utils/SymbolInfoIFs';
 import {
     createUserTradesSlice,
     type UserTradeDataStore,
 } from './UserTradeDataStore';
-import type { TransactionData } from '~/components/Trade/DepositsWithdrawalsTable/DepositsWithdrawalsTableRow';
+
+export type marginModesT = 'cross' | 'isolated';
 
 type TradeDataStore = UserTradeDataStore & {
+    marginMode: marginModesT;
+    setMarginMode: (m: marginModesT) => void;
     symbol: string;
     setSymbol: (symbol: string) => void;
     symbolInfo: SymbolInfoIF | null;
@@ -36,12 +41,20 @@ type TradeDataStore = UserTradeDataStore & {
     setFetchedChannels: (channels: Set<string>) => void;
     userNonFundingLedgerUpdates: TransactionData[];
     setUserNonFundingLedgerUpdates: (updates: TransactionData[]) => void;
+    marginBucket: MarginBucketInfo | null;
+    setMarginBucket: (marginBucket: MarginBucketInfo | null) => void;
+    isTradeInfoExpanded: boolean;
+    setIsTradeInfoExpanded: (shouldExpand: boolean) => void;
+    updateSymbolInfo: (symbolInfo: TokenDetailsIF) => void; // used for updating symbol info from REST API while ws is sleeping
+    addToFetchedChannels: (channel: string) => void;
 };
 
 const useTradeDataStore = create<TradeDataStore>()(
     persist(
         (set, get) => ({
             ...createUserTradesSlice(set, get),
+            marginMode: 'cross',
+            setMarginMode: (m: marginModesT) => set({ marginMode: m }),
             symbol: 'BTC',
             setSymbol: (symbol: string) => {
                 setLS('activeCoin', symbol);
@@ -63,7 +76,8 @@ const useTradeDataStore = create<TradeDataStore>()(
                 }
                 set({ symbolInfo });
             },
-            favKeys: ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'LINK'],
+            // favKeys: ['BTC'],
+            favKeys: ['BTC', 'ETH', 'SOL'],
             setFavKeys: (favs: string[]) => set({ favKeys: favs }),
             addToFavKeys: (coin: string) => {
                 if (
@@ -115,10 +129,50 @@ const useTradeDataStore = create<TradeDataStore>()(
             userNonFundingLedgerUpdates: [],
             setUserNonFundingLedgerUpdates: (updates: TransactionData[]) =>
                 set({ userNonFundingLedgerUpdates: updates }),
+            isTradeInfoExpanded: false,
+            setIsTradeInfoExpanded: (shouldExpand: boolean) =>
+                set({ isTradeInfoExpanded: shouldExpand }),
+            updateSymbolInfo: (tokenDetails: TokenDetailsIF) => {
+                const currentSymbolInfo = get().symbolInfo;
+                if (
+                    tokenDetails.name === currentSymbolInfo?.coin ||
+                    (tokenDetails.name === 'UBTC' &&
+                        currentSymbolInfo?.coin === 'BTC')
+                ) {
+                    currentSymbolInfo.markPx = tokenDetails.markPx;
+                    currentSymbolInfo.lastPriceChange =
+                        tokenDetails.markPx - currentSymbolInfo.markPx;
+                    set({ symbolInfo: currentSymbolInfo });
+                }
+            },
+            addToFetchedChannels: (channel: string) => {
+                get().fetchedChannels.add(channel);
+            },
         }),
         {
             name: 'TRADE_DATA',
+            version: 1, // Bump version for migration!
+            migrate: (persistedState: unknown, version: number) => {
+                if (version < 1) {
+                    const currentFavKeys =
+                        (persistedState as TradeDataStore).favKeys ?? [];
+                    const mustHave = ['ETH', 'SOL'];
+
+                    for (const coin of mustHave) {
+                        if (!currentFavKeys.includes(coin)) {
+                            currentFavKeys.push(coin);
+                        }
+                    }
+
+                    return {
+                        ...(persistedState as TradeDataStore),
+                        favKeys: currentFavKeys,
+                    };
+                }
+                return persistedState ?? {};
+            },
             partialize: (state) => ({
+                marginMode: state.marginMode,
                 favKeys: state.favKeys,
                 symbol: state.symbol,
                 selectedTradeTab:
@@ -126,6 +180,7 @@ const useTradeDataStore = create<TradeDataStore>()(
                         ? 'Positions'
                         : state.selectedTradeTab,
                 userNonFundingLedgerUpdates: state.userNonFundingLedgerUpdates,
+                isTradeInfoExpanded: state.isTradeInfoExpanded,
             }),
         },
     ),

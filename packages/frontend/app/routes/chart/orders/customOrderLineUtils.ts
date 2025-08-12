@@ -1,8 +1,5 @@
 import type { IChartingLibraryWidget, IPaneApi } from '~/tv/charting_library';
 
-export const buyColor = '#26A69A';
-export const sellColor = '#E57373';
-
 export type LineLabelType =
     | 'PNL'
     | 'Limit'
@@ -31,6 +28,8 @@ export const addCustomOrderLine = async (
     chart: IChartingLibraryWidget,
     orderPrice: number,
     lineColor: string,
+    lineStyle: number,
+    lineWidth: number,
 ) => {
     const orderLine = await chart
         .activeChart()
@@ -43,8 +42,8 @@ export const addCustomOrderLine = async (
             overrides: {
                 linecolor: lineColor,
                 borderColor: lineColor,
-                linestyle: 3,
-                linewidth: 1,
+                linestyle: lineStyle,
+                linewidth: lineWidth,
             },
         });
 
@@ -52,8 +51,12 @@ export const addCustomOrderLine = async (
     return orderLine;
 };
 
-export const priceToPixel = (chart: IChartingLibraryWidget, price: number) => {
-    const { pixel, chartHeight } = getPricetoPixel(chart, price);
+export const priceToPixel = (
+    chart: IChartingLibraryWidget,
+    price: number,
+    lineType: 'PNL' | 'LIMIT' | 'LIQ',
+) => {
+    const { pixel, chartHeight } = getPricetoPixel(chart, price, lineType);
 
     if (chartHeight) return pixel / chartHeight;
 
@@ -76,12 +79,13 @@ export function getDynamicSymlogConstant(
 export const getPricetoPixel = (
     chart: IChartingLibraryWidget,
     price: number,
+    lineType: 'PNL' | 'LIMIT' | 'LIQ',
     chartHeight?: number,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     scaleData?: any,
 ) => {
     const dpr = window.devicePixelRatio || 1;
-    const textHeight = 15 * dpr;
+    const textHeight = (lineType === 'LIQ' ? 18 : 15) * dpr;
     let pixel = 0;
     const priceScalePane = chart.activeChart().getPanes()[0] as IPaneApi;
 
@@ -93,7 +97,7 @@ export const getPricetoPixel = (
             ? chartHeight
             : priceScalePane.getHeight();
 
-        if (!priceRange) return { pixel: 0, chartHeight: 0 };
+        if (!priceRange) return { pixel: 0, chartHeight: 0, textHeight: 0 };
 
         const maxPrice = priceRange.to;
         const minPrice = priceRange.from;
@@ -114,10 +118,14 @@ export const getPricetoPixel = (
             pixel = chartHeightTemp - pixelCoordinate - textHeight / 2;
         }
 
-        return { pixel: pixel, chartHeight: chartHeightTemp };
+        return {
+            pixel: pixel,
+            chartHeight: chartHeightTemp,
+            textHeight: textHeight,
+        };
     }
 
-    return { pixel: 0, chartHeight: 0 };
+    return { pixel: 0, chartHeight: 0, textHeight: 0 };
 };
 
 export function estimateTextWidth(text: string, fontSize: number = 10): number {
@@ -170,6 +178,7 @@ export const createAnchoredMainText = async (
     yPrice: number,
     textValue: LineLabel,
     borderColor: string,
+    lineType: 'PNL' | 'LIMIT' | 'LIQ',
 ) => {
     const text = formatLineLabel(textValue);
     return createAnchoredText(
@@ -180,6 +189,7 @@ export const createAnchoredMainText = async (
         '#D1D1D1',
         estimateTextWidth(text),
         borderColor,
+        lineType,
     );
 };
 
@@ -188,6 +198,7 @@ export const createQuantityAnchoredText = async (
     xLoc: number,
     yPrice: number,
     text: string,
+    lineType: 'PNL' | 'LIMIT' | 'LIQ',
 ) => {
     return createAnchoredText(
         chart,
@@ -197,6 +208,7 @@ export const createQuantityAnchoredText = async (
         '#000000',
         estimateTextWidth(text) + 15,
         '#3C91FF',
+        lineType,
         '#FFFFFF',
     );
 };
@@ -205,6 +217,7 @@ export const createCancelAnchoredText = async (
     chart: IChartingLibraryWidget,
     xLoc: number,
     yPrice: number,
+    lineType: 'PNL' | 'LIMIT' | 'LIQ',
 ) => {
     return createAnchoredText(
         chart,
@@ -214,6 +227,7 @@ export const createCancelAnchoredText = async (
         '#D1D1D1',
         12,
         '#3C91FF',
+        lineType,
     );
 };
 
@@ -225,12 +239,13 @@ export const createAnchoredText = async (
     backgroundColor: string,
     wordWrapWidth: number,
     borderColor: string,
+    lineType: 'PNL' | 'LIMIT' | 'LIQ',
     color?: string,
 ) => {
     const shape = await chart.activeChart().createAnchoredShape(
         {
             x: xLoc,
-            y: priceToPixel(chart, yPrice),
+            y: priceToPixel(chart, yPrice, lineType),
         },
         {
             shape: 'anchored_text',

@@ -1,5 +1,6 @@
 import { API } from './api';
 import { WebsocketManager, type ActiveSubscription } from './ws';
+import { MultiSocketInfo, type WebSocketEndpoints } from './websocket-pool';
 import type {
     AllMidsData,
     CandleSnapshotData,
@@ -28,28 +29,50 @@ interface InfoOptions {
     meta?: Meta;
     isDebug?: boolean;
     workers?: number;
+    useMultiSocket?: boolean;
+    wsEndpoints?: WebSocketEndpoints;
 }
 
 export class Info extends API {
     public wsManager: WebsocketManager | null = null;
+    public multiSocketInfo: MultiSocketInfo | null = null;
     public coinToAsset: Record<string, number> = {};
     public nameToCoin: Record<string, string> = {};
     public assetToSzDecimals: Record<number, number> = {};
     public environment: Environment;
     public baseUrl: string;
+    private useMultiSocket: boolean = false;
 
     constructor(options: InfoOptions) {
         super(options.environment);
         this.environment = options.environment;
         this.baseUrl = API_URLS[this.environment];
-        const { skipWs = false, isDebug = false, workers = 4 } = options;
+        const {
+            skipWs = false,
+            isDebug = false,
+            workers = 4,
+            useMultiSocket = false,
+            wsEndpoints,
+        } = options;
+
+        this.useMultiSocket = useMultiSocket;
 
         if (!skipWs) {
-            this.wsManager = new WebsocketManager(
-                this.baseUrl,
-                isDebug,
-                workers,
-            );
+            if (useMultiSocket) {
+                // Use multi-socket mode
+                const endpoints = wsEndpoints || {
+                    market: this.baseUrl,
+                    user: this.baseUrl,
+                };
+                this.multiSocketInfo = new MultiSocketInfo(endpoints, isDebug);
+            } else {
+                // Use single socket mode (backward compatibility)
+                this.wsManager = new WebsocketManager(
+                    this.baseUrl,
+                    isDebug,
+                    workers,
+                );
+            }
         }
 
         // async init
@@ -69,8 +92,22 @@ export class Info extends API {
         this.environment = newEnvironment;
         this.baseUrl = API_URLS[newEnvironment];
 
-        if (this.wsManager) {
-            this.wsManager.setBaseUrl(this.baseUrl);
+        if (this.useMultiSocket) {
+            if (this.multiSocketInfo) {
+                // For multi-socket, we need to recreate with new endpoints
+                this.multiSocketInfo.stop();
+                this.multiSocketInfo = new MultiSocketInfo(
+                    {
+                        market: this.baseUrl,
+                        user: this.baseUrl,
+                    },
+                    false,
+                );
+            }
+        } else {
+            if (this.wsManager) {
+                this.wsManager.setBaseUrl(this.baseUrl);
+            }
         }
 
         this.coinToAsset = {};
@@ -95,12 +132,21 @@ export class Info extends API {
     }
 
     public disconnectWebsocket() {
-        if (!this.wsManager) {
-            throw new Error(
-                'Cannot call disconnectWebsocket since skipWs was used',
-            );
+        if (this.useMultiSocket) {
+            if (!this.multiSocketInfo) {
+                throw new Error(
+                    'Cannot call disconnectWebsocket since skipWs was used',
+                );
+            }
+            this.multiSocketInfo.stop();
+        } else {
+            if (!this.wsManager) {
+                throw new Error(
+                    'Cannot call disconnectWebsocket since skipWs was used',
+                );
+            }
+            this.wsManager.stop();
         }
-        this.wsManager.stop();
     }
 
     public async userState(address: string): Promise<ClearinghouseState> {
@@ -216,7 +262,7 @@ export class Info extends API {
     public subscribe(
         subscription: Subscription,
         callback: Callback,
-    ): { subId: number; unsubscribe: () => void } {
+    ): { subId?: number; unsubscribe: () => void } {
         if (
             subscription.type === 'l2Book' ||
             subscription.type === 'trades' ||
@@ -224,14 +270,29 @@ export class Info extends API {
         ) {
             subscription.coin = this.nameToCoin[subscription.coin];
         }
-        if (!this.wsManager) {
-            throw new Error('Cannot call subscribe since skipWs was used');
+
+        if (this.useMultiSocket) {
+            if (!this.multiSocketInfo) {
+                throw new Error('Cannot call subscribe since skipWs was used');
+            }
+            const result = this.multiSocketInfo.subscribe(
+                subscription,
+                callback,
+            );
+            return {
+                unsubscribe: result.unsubscribe,
+            };
+        } else {
+            if (!this.wsManager) {
+                throw new Error('Cannot call subscribe since skipWs was used');
+            }
+            const subId = this.wsManager.subscribe(subscription, callback);
+            return {
+                subId,
+                unsubscribe: () =>
+                    this.unsubscribe(subscription, subId, callback),
+            };
         }
-        const subId = this.wsManager.subscribe(subscription, callback);
-        return {
-            subId,
-            unsubscribe: () => this.unsubscribe(subscription, subId, callback),
-        };
     }
 
     public unsubscribe(
@@ -246,14 +307,33 @@ export class Info extends API {
         ) {
             subscription.coin = this.nameToCoin[subscription.coin];
         }
-        if (!this.wsManager) {
-            throw new Error('Cannot call unsubscribe since skipWs was used');
+
+        if (this.useMultiSocket) {
+            if (!this.multiSocketInfo) {
+                throw new Error(
+                    'Cannot call unsubscribe since skipWs was used',
+                );
+            }
+            if (callback) {
+                this.multiSocketInfo.unsubscribe(
+                    subscription,
+                    callback,
+                    subscriptionId,
+                );
+            }
+            return true;
+        } else {
+            if (!this.wsManager) {
+                throw new Error(
+                    'Cannot call unsubscribe since skipWs was used',
+                );
+            }
+            return this.wsManager.unsubscribe(
+                subscription,
+                subscriptionId,
+                callback,
+            );
         }
-        return this.wsManager.unsubscribe(
-            subscription,
-            subscriptionId,
-            callback,
-        );
     }
 
     public nameToAsset(name: string): number {

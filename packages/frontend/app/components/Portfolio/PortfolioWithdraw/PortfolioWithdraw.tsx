@@ -4,8 +4,10 @@ import Tooltip from '~/components/Tooltip/Tooltip';
 import { useDebouncedCallback } from '~/hooks/useDebounce';
 import styles from './PortfolioWithdraw.module.css';
 import SimpleButton from '~/components/SimpleButton/SimpleButton';
+import FogoLogo from '../../../assets/tokens/FOGO.svg';
+import { useNotificationStore } from '~/stores/NotificationStore';
 
-interface PortfolioWithdrawProps {
+interface propsIF {
     portfolio: {
         id: string;
         name: string;
@@ -20,12 +22,17 @@ interface PortfolioWithdrawProps {
 function PortfolioWithdraw({
     portfolio,
     onWithdraw,
+    onClose,
     isProcessing = false,
-}: PortfolioWithdrawProps) {
+}: propsIF) {
+    const notificationStore = useNotificationStore();
     const [amount, setAmount] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
+    const [transactionStatus, setTransactionStatus] = useState<
+        'idle' | 'pending' | 'success' | 'failed'
+    >('idle');
 
-    const unitValue = portfolio.unit || 'USD';
+    const unitValue = portfolio.unit || 'fUSD';
 
     // const isValidNumberInput = useCallback(() => {
     //     return true
@@ -98,6 +105,8 @@ function PortfolioWithdraw({
         (event: React.ChangeEvent<HTMLInputElement>) => {
             const newValue = event.target.value;
             debouncedHandleChange(newValue);
+            // Clear transaction status when user starts typing
+            setTransactionStatus('idle');
         },
         [debouncedHandleChange],
     );
@@ -107,8 +116,10 @@ function PortfolioWithdraw({
         setError(null);
     }, [portfolio.availableBalance]);
 
-    const handleWithdraw = useCallback(() => {
+    const handleWithdraw = useCallback(async () => {
         const withdrawAmount = parseFloat(amount);
+        setError(null);
+        setTransactionStatus('pending');
 
         const validation = validateAmount(
             withdrawAmount,
@@ -117,11 +128,62 @@ function PortfolioWithdraw({
 
         if (!validation.isValid) {
             setError(validation.message);
+            setTransactionStatus('idle');
             return;
         }
 
-        onWithdraw(withdrawAmount);
-    }, [amount, portfolio.availableBalance, onWithdraw, validateAmount]);
+        try {
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(
+                    () =>
+                        reject(
+                            new Error('Transaction timed out after 15 seconds'),
+                        ),
+                    15000,
+                );
+            });
+
+            // Race between the withdraw and the timeout
+            const result = await Promise.race([
+                onWithdraw(withdrawAmount),
+                timeoutPromise,
+            ]);
+
+            // Check if the result indicates failure
+            if (result && result.success === false) {
+                setTransactionStatus('failed');
+                setError(result.error || 'Transaction failed');
+            } else {
+                setTransactionStatus('success');
+                setAmount(''); // Clear form on success
+
+                // Show success notification
+                notificationStore.add({
+                    title: 'Withdrawal Successful',
+                    message: `Successfully withdrew $${withdrawAmount.toFixed(2)} USD`,
+                    icon: 'check',
+                });
+
+                // Close modal on success - notification will show after modal closes
+                if (onClose) {
+                    onClose();
+                }
+            }
+        } catch (error) {
+            setTransactionStatus('failed');
+            setError(
+                error instanceof Error ? error.message : 'Withdrawal failed',
+            );
+        }
+    }, [
+        amount,
+        portfolio.availableBalance,
+        onWithdraw,
+        validateAmount,
+        onClose,
+        notificationStore,
+    ]);
 
     // Memoize info items to prevent recreating on each render
     const infoItems = useMemo(
@@ -155,15 +217,17 @@ function PortfolioWithdraw({
     return (
         <div className={styles.container}>
             <div className={styles.textContent}>
-                <h4>
-                    Withdraw {unitValue} from {portfolio.name}
-                </h4>
-                <p>
-                    {unitValue} will be sent to your address. A{' '}
-                    {unitValue === 'USD' ? '$0.001' : '0.0001 BTC'} fee will be
-                    deducted from the {unitValue} withdrawn. Withdrawals should
-                    arrive within 5 minutes.
-                </p>
+                <img src={FogoLogo} alt='Fogo Chain Logo' width='64px' />
+                {/* <h4>Withdraw {unitValue} to Fogo</h4> */}
+                <h4>Withdraw fUSD to Fogo</h4>
+                <div>
+                    <p>fUSD will be sent to your address.</p>
+                    <p>
+                        A {unitValue === 'USD' ? '$0.001' : '0.0001 BTC'} fee
+                        will be deducted from the fUSD withdrawn.
+                    </p>
+                    <p>Withdrawals should arrive within 5 minutes.</p>
+                </div>
             </div>
 
             <div className={styles.inputContainer}>
@@ -184,6 +248,11 @@ function PortfolioWithdraw({
                     Max
                 </button>
                 {error && <div className={styles.error}>{error}</div>}
+                {transactionStatus === 'failed' && !error && (
+                    <div className={styles.error}>
+                        Transaction failed. Please try again.
+                    </div>
+                )}
             </div>
 
             <div className={styles.contentContainer}>
@@ -210,7 +279,11 @@ function PortfolioWithdraw({
                 onClick={handleWithdraw}
                 disabled={isButtonDisabled}
             >
-                {isProcessing ? 'Processing...' : 'Withdraw'}{' '}
+                {transactionStatus === 'pending'
+                    ? 'Confirming Transaction...'
+                    : isProcessing
+                      ? 'Processing...'
+                      : 'Withdraw'}
             </SimpleButton>
         </div>
     );
