@@ -3,12 +3,18 @@ import GenericTable from '~/components/Tables/GenericTable/GenericTable';
 import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import type { TableSortDirection } from '~/utils/CommonIFs';
-import type { DepositAndWithDrawalSortBy } from '~/utils/UserDataIFs';
-import DepositsWithdrawalsTableHeader from './DepositsWithdrawalsTableHeader';
+import type {
+    DepositAndWithDrawalSortBy,
+    DepositAndWithDrawalIF,
+} from '~/utils/UserDataIFs';
+import DepositsWithdrawalsTableHeader, {
+    DepositsWithdrawalsTableModel,
+} from './DepositsWithdrawalsTableHeader';
 import DepositsWithdrawalsTableRow, {
     type TransactionData,
 } from './DepositsWithdrawalsTableRow';
 import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
+import { useInfoApi } from '~/hooks/useInfoApi';
 
 function sortTransactionData(
     data: TransactionData[],
@@ -17,6 +23,8 @@ function sortTransactionData(
 ): TransactionData[] {
     const copy = [...data];
     if (!sortBy || !sortDirection) return copy;
+
+    const { fetchUserNonFundingLedgerUpdates } = useInfoApi();
 
     const getKey = (tx: TransactionData): string | number => {
         const d = tx.delta as any;
@@ -70,6 +78,7 @@ export default function DepositsWithdrawalsTable(
         () => [...transactions].sort((a, b) => b.time - a.time),
         [transactions],
     );
+    const { fetchUserNonFundingLedgerUpdates } = useInfoApi();
 
     const { debugWallet } = useDebugStore();
     const currentUserRef = useRef<string>('');
@@ -80,7 +89,14 @@ export default function DepositsWithdrawalsTable(
         : `${EXTERNAL_PAGE_URL_PREFIX}/depositsandwithdrawals`;
 
     return (
-        <GenericTable
+        <GenericTable<
+            TransactionData,
+            DepositAndWithDrawalSortBy,
+            (
+                address: string,
+                aggregateByTime: boolean,
+            ) => Promise<TransactionData[]>
+        >
             storageKey={`DepositsWithdrawalsTable_${currentUserRef.current}`}
             data={sortedTxs}
             renderHeader={(dir, onSort, by) => (
@@ -104,6 +120,9 @@ export default function DepositsWithdrawalsTable(
             skeletonColRatios={[2, 1, 1, 1, 1, 1, 1, 1]}
             defaultSortBy='time'
             defaultSortDirection='desc'
+            tableModel={DepositsWithdrawalsTableModel}
+            csvDataFetcher={fetchUserNonFundingLedgerUpdates}
+            csvDataFetcherArgs={[debugWallet.address, true]}
         />
     );
 }

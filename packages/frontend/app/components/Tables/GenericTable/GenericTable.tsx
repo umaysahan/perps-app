@@ -339,6 +339,10 @@ export default function GenericTable<
                     .map((h) => {
                         const raw = row[h.key];
 
+                        if (h.exportFromRow) {
+                            return h.exportFromRow(row);
+                        }
+
                         if (h.exportAction) {
                             return h.exportAction(raw);
                         }

@@ -53,124 +53,124 @@ interface DepositsWithdrawalsTableRowProps {
     transaction: TransactionData;
 }
 
+export const TOKEN_TO_NETWORK: Record<string, string> = {
+    HYPE: 'Hyperliquid',
+    PURR: 'Hyperliquid',
+    UFART: 'Solana',
+    FARTCOIN: 'Solana',
+    USOL: 'Solana',
+    UETH: 'Ethereum',
+    UBTC: 'Bitcoin',
+    USDT0: 'Ethereum',
+};
+
+export function getNetwork(tx: TransactionData): string {
+    const d = tx.delta as
+        | DepositDelta
+        | AccountClassTransferDelta
+        | VaultDepositDelta
+        | SpotTransferDelta
+        | WithdrawDelta;
+    if (d.type === 'spotTransfer') {
+        return TOKEN_TO_NETWORK[d.token] || 'Unknown';
+    }
+    return 'FOGO';
+}
+
+export function getAction(tx: TransactionData): string {
+    const d = tx.delta as
+        | DepositDelta
+        | AccountClassTransferDelta
+        | VaultDepositDelta
+        | SpotTransferDelta
+        | WithdrawDelta;
+    switch (d.type) {
+        case 'deposit':
+        case 'accountClassTransfer':
+        case 'vaultDeposit':
+            return 'Deposit';
+        case 'withdraw':
+            return 'Withdrawal';
+        case 'spotTransfer':
+            return 'Spot Transfer';
+        default:
+            return 'Unknown';
+    }
+}
+
+export function getValueChange(tx: TransactionData): string {
+    const d = tx.delta as
+        | DepositDelta
+        | AccountClassTransferDelta
+        | VaultDepositDelta
+        | SpotTransferDelta
+        | WithdrawDelta;
+    if (d.type === 'spotTransfer') {
+        if (['HYPE', 'USOL'].includes(d.token)) {
+            const amt =
+                parseFloat(d.amount) - parseFloat(d.nativeTokenFee || '0');
+            return `-${amt.toFixed(7)} ${d.token}`;
+        }
+        if (d.token === 'UBTC') {
+            const btcPriceUsd = 89000;
+            const btc = parseFloat(d.usdcValue) / btcPriceUsd;
+            return `-${btc.toFixed(3)} BTC`;
+        }
+        if (d.token === 'UETH') {
+            const ethPriceUsd = 1900;
+            const eth = parseFloat(d.usdcValue) / ethPriceUsd;
+            return `-${eth.toFixed(2)} ETH`;
+        }
+        const usd = parseFloat(d.usdcValue);
+        return `-${usd.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDT`;
+    }
+    if (d.type === 'withdraw') {
+        const usd = parseFloat(d.usdc);
+        return `-${usd.toLocaleString(undefined, { maximumFractionDigits: 7 })} SOL`;
+    }
+    if (d.type === 'deposit') {
+        const usd = parseFloat(d.usdc);
+        return `+${usd.toFixed(0)} USDT`;
+    }
+    if (d.type === 'accountClassTransfer') {
+        const amt = parseFloat(d.usdc) * (d.toPerp ? -1 : 1);
+        return `${amt >= 0 ? '+' : ''}${amt.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDT`;
+    }
+    return '';
+}
+
+export function getFee(tx: TransactionData): string {
+    const d = tx.delta as SpotTransferDelta;
+    if (d.nativeTokenFee && +d.nativeTokenFee > 0) {
+        return `${parseFloat(d.nativeTokenFee).toFixed(7)} ${getToken(getNetwork(tx))}`;
+    }
+    if (d.fee) {
+        return `${parseFloat(d.fee).toFixed(7)} ${getToken(getNetwork(tx))}`;
+    }
+    return '--';
+}
+
+function getToken(network: string): string {
+    switch (network) {
+        case 'Hyperliquid':
+            return 'HYPE';
+        case 'Solana':
+            return 'SOL';
+        case 'Ethereum':
+            return 'ETH';
+        case 'Bitcoin':
+            return 'BTC';
+        default:
+            return 'HYPE';
+    }
+}
+
 export default function DepositsWithdrawalsTableRow(
     props: DepositsWithdrawalsTableRowProps,
 ) {
     const { transaction } = props;
 
     const getStatusFromDelta = (type: string): string => 'Completed';
-
-    const TOKEN_TO_NETWORK: Record<string, string> = {
-        HYPE: 'Hyperliquid',
-        PURR: 'Hyperliquid',
-        UFART: 'Solana',
-        FARTCOIN: 'Solana',
-        USOL: 'Solana',
-        UETH: 'Ethereum',
-        UBTC: 'Bitcoin',
-        USDT0: 'Ethereum',
-    };
-
-    function getNetwork(tx: TransactionData): string {
-        const d = tx.delta as
-            | DepositDelta
-            | AccountClassTransferDelta
-            | VaultDepositDelta
-            | SpotTransferDelta
-            | WithdrawDelta;
-        if (d.type === 'spotTransfer') {
-            return TOKEN_TO_NETWORK[d.token] || 'Unknown';
-        }
-        return 'FOGO';
-    }
-
-    function getAction(tx: TransactionData): string {
-        const d = tx.delta as
-            | DepositDelta
-            | AccountClassTransferDelta
-            | VaultDepositDelta
-            | SpotTransferDelta
-            | WithdrawDelta;
-        switch (d.type) {
-            case 'deposit':
-            case 'accountClassTransfer':
-            case 'vaultDeposit':
-                return 'Deposit';
-            case 'withdraw':
-                return 'Withdrawal';
-            case 'spotTransfer':
-                return 'Spot Transfer';
-            default:
-                return 'Unknown';
-        }
-    }
-
-    function getValueChange(tx: TransactionData): string {
-        const d = tx.delta as
-            | DepositDelta
-            | AccountClassTransferDelta
-            | VaultDepositDelta
-            | SpotTransferDelta
-            | WithdrawDelta;
-        if (d.type === 'spotTransfer') {
-            if (['HYPE', 'USOL'].includes(d.token)) {
-                const amt =
-                    parseFloat(d.amount) - parseFloat(d.nativeTokenFee || '0');
-                return `-${amt.toFixed(7)} ${d.token}`;
-            }
-            if (d.token === 'UBTC') {
-                const btcPriceUsd = 89000;
-                const btc = parseFloat(d.usdcValue) / btcPriceUsd;
-                return `-${btc.toFixed(3)} BTC`;
-            }
-            if (d.token === 'UETH') {
-                const ethPriceUsd = 1900;
-                const eth = parseFloat(d.usdcValue) / ethPriceUsd;
-                return `-${eth.toFixed(2)} ETH`;
-            }
-            const usd = parseFloat(d.usdcValue);
-            return `-${usd.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDT`;
-        }
-        if (d.type === 'withdraw') {
-            const usd = parseFloat(d.usdc);
-            return `-${usd.toLocaleString(undefined, { maximumFractionDigits: 7 })} SOL`;
-        }
-        if (d.type === 'deposit') {
-            const usd = parseFloat(d.usdc);
-            return `+${usd.toFixed(0)} USDT`;
-        }
-        if (d.type === 'accountClassTransfer') {
-            const amt = parseFloat(d.usdc) * (d.toPerp ? -1 : 1);
-            return `${amt >= 0 ? '+' : ''}${amt.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDT`;
-        }
-        return '';
-    }
-
-    function getFee(tx: TransactionData): string {
-        const d = tx.delta as SpotTransferDelta;
-        if (d.nativeTokenFee && +d.nativeTokenFee > 0) {
-            return `${parseFloat(d.nativeTokenFee).toFixed(7)} ${getToken(getNetwork(tx))}`;
-        }
-        if (d.fee) {
-            return `${parseFloat(d.fee).toFixed(7)} ${getToken(getNetwork(tx))}`;
-        }
-        return '--';
-    }
-
-    function getToken(network: string): string {
-        switch (network) {
-            case 'Hyperliquid':
-                return 'HYPE';
-            case 'Solana':
-                return 'SOL';
-            case 'Ethereum':
-                return 'ETH';
-            case 'Bitcoin':
-                return 'BTC';
-            default:
-                return 'HYPE';
-        }
-    }
 
     const status = getStatusFromDelta(transaction.delta.type);
     const network = getNetwork(transaction);

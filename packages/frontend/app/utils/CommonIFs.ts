@@ -7,10 +7,12 @@ export enum TableState {
 }
 
 export interface HeaderCell<T = string> {
+    exportFromRow: any;
     name: string;
     key: string;
     sortable?: boolean;
     className: string;
     exportable?: boolean;
     exportAction?: (data: T) => string;
+    exportActionRow?: (row: any) => string;
 }
