@@ -262,6 +262,7 @@ export default function MarketCloseModal({ close, position }: PropsIF) {
                         props: {
                             actionType: 'Market Close Success',
                             orderType: 'Market',
+                            success: true,
                             direction: closingSide === 'buy' ? 'Buy' : 'Sell',
                             txBuildDuration: getDurationSegment(
                                 timeOfTxBuildStart,
@@ -293,6 +294,7 @@ export default function MarketCloseModal({ close, position }: PropsIF) {
                         props: {
                             actionType: 'Market Close Fail',
                             orderType: 'Market',
+                            success: false,
                             errorMessage: result.error || 'Transaction failed',
                             direction: closingSide === 'buy' ? 'Buy' : 'Sell',
                             txBuildDuration: getDurationSegment(
@@ -333,6 +335,7 @@ export default function MarketCloseModal({ close, position }: PropsIF) {
                     props: {
                         actionType: 'Market Close Fail',
                         orderType: 'Market',
+                        success: false,
                         errorMessage:
                             error instanceof Error
                                 ? error.message

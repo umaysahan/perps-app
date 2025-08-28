@@ -153,6 +153,7 @@ export default function OpenOrdersTable(props: OpenOrdersTableProps) {
                                     props: {
                                         actionType: 'Limit Cancel Success',
                                         orderType: 'Limit',
+                                        success: true,
                                         direction:
                                             order.side === 'buy'
                                                 ? 'Buy'
@@ -182,6 +183,7 @@ export default function OpenOrdersTable(props: OpenOrdersTableProps) {
                             props: {
                                 actionType: 'Limit Cancel All Success',
                                 orderType: 'Limit',
+                                success: true,
                                 txDuration: getDurationSegment(
                                     timeOfSubmission,
                                     Date.now(),
@@ -217,6 +219,7 @@ export default function OpenOrdersTable(props: OpenOrdersTableProps) {
                                 actionType:
                                     'Limit Order Cancel All Partial Success',
                                 orderType: 'Limit',
+                                success: false,
                                 txDuration: getDurationSegment(
                                     timeOfSubmission,
                                     Date.now(),
@@ -240,6 +243,7 @@ export default function OpenOrdersTable(props: OpenOrdersTableProps) {
                             props: {
                                 actionType: 'Limit Cancel All Fail',
                                 orderType: 'Limit',
+                                success: false,
                                 txDuration: getDurationSegment(
                                     timeOfSubmission,
                                     Date.now(),

@@ -194,6 +194,7 @@ function PortfolioWithdraw({
                     plausible('Onchain Action', {
                         props: {
                             actionType: 'Withdrawal Fail',
+                            success: false,
                             maxActive: maxModeActive,
                             errorMessage: result.error || 'Transaction failed',
                             txBuildDuration: getDurationSegment(
@@ -226,6 +227,7 @@ function PortfolioWithdraw({
                     plausible('Onchain Action', {
                         props: {
                             actionType: 'Withdrawal Success',
+                            success: true,
                             maxActive: maxModeActive,
                             txBuildDuration: getDurationSegment(
                                 timeOfTxBuildStart,
@@ -264,6 +266,7 @@ function PortfolioWithdraw({
                 plausible('Offchain Failure', {
                     props: {
                         actionType: 'Withdrawal Fail',
+                        success: false,
                         maxActive: maxModeActive,
                         errorMessage:
                             error instanceof Error

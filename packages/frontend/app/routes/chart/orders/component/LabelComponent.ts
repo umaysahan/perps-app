@@ -328,6 +328,7 @@ const LabelComponent = ({
                             actionType: 'Limit Cancel Success',
                             orderType: 'Limit',
                             direction: order.side === 'buy' ? 'Buy' : 'Sell',
+                            success: true,
                             txBuildDuration: getDurationSegment(
                                 timeOfTxBuildStart,
                                 result.timeOfSubmission,
@@ -357,6 +358,7 @@ const LabelComponent = ({
                             actionType: 'Limit Cancel Fail',
                             orderType: 'Limit',
                             direction: order.side === 'buy' ? 'Buy' : 'Sell',
+                            success: false,
                             txBuildDuration: getDurationSegment(
                                 timeOfTxBuildStart,
                                 result.timeOfSubmission,
@@ -601,6 +603,7 @@ const LabelComponent = ({
                                 actionType: 'Limit Update Fail',
                                 orderType: 'Limit',
                                 direction: side === 'buy' ? 'Buy' : 'Sell',
+                                success: false,
                                 txBuildDuration: getDurationSegment(
                                     timeOfTxBuildStart,
                                     limitOrderResult.timeOfSubmission,
@@ -632,6 +635,7 @@ const LabelComponent = ({
                                 actionType: 'Limit Update Success',
                                 orderType: 'Limit',
                                 direction: side === 'buy' ? 'Buy' : 'Sell',
+                                success: true,
                                 txBuildDuration: getDurationSegment(
                                     timeOfTxBuildStart,
                                     limitOrderResult.timeOfSubmission,
@@ -672,6 +676,7 @@ const LabelComponent = ({
                             actionType: 'Limit Update Fail',
                             orderType: 'Limit',
                             direction: side === 'buy' ? 'Buy' : 'Sell',
+                            success: false,
                             errorMessage:
                                 error instanceof Error
                                     ? error.message

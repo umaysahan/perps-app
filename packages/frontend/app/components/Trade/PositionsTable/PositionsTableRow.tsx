@@ -205,6 +205,7 @@ const PositionsTableRow: React.FC<PositionsTableRowProps> = React.memo(
                                 actionType: 'Market Close Success',
                                 orderType: 'Market',
                                 direction: closingSide,
+                                success: true,
                                 txBuildDuration: getDurationSegment(
                                     timeOfTxBuildStart,
                                     result.timeOfSubmission,
@@ -235,6 +236,7 @@ const PositionsTableRow: React.FC<PositionsTableRowProps> = React.memo(
                                 actionType: 'Market Close Fail',
                                 orderType: 'Market',
                                 direction: closingSide,
+                                success: false,
                                 txBuildDuration: getDurationSegment(
                                     timeOfTxBuildStart,
                                     result.timeOfSubmission,

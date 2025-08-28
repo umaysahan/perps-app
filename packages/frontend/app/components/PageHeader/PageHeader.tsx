@@ -75,13 +75,6 @@ export default function PageHeader() {
 
     const landingTime = useRef<number>(Date.now());
 
-    // useEffect(() => {
-    //     // track initial site landing
-    //     if (typeof plausible === 'function') {
-    //         plausible('Landing');
-    //     }
-    // }, []);
-
     // data to generate nav links in page header
     const navLinks = [
         { name: 'Trade', path: `/v2/trade/${symbol}` },
@@ -163,7 +156,7 @@ export default function PageHeader() {
                                   landingTime.current,
                                   Date.now(),
                               )
-                            : 'not refreshed',
+                            : 'login button clicked',
                     },
                 });
             }
@@ -328,7 +321,7 @@ export default function PageHeader() {
                         </section>
                     )}
                     <span
-                        className={`${!isUserConnected ? 'plausible-event-name=Login+Button+Click plausible-event-location=Page+Header' : ''}`}
+                        className={`${!isUserConnected ? `plausible-event-name=Login+Button+Click plausible-event-location=Page+Header` : ''}`}
                         ref={sessionButtonRef}
                     >
                         <SessionButton />

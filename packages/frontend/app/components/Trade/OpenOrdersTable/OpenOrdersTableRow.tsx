@@ -85,6 +85,7 @@ export default function OpenOrdersTableRow(props: OpenOrdersTableRowProps) {
                         props: {
                             actionType: 'Limit Cancel Success',
                             orderType: 'Limit',
+                            success: true,
                             direction: order.side === 'buy' ? 'Buy' : 'Sell',
                             txBuildDuration: getDurationSegment(
                                 timeOfTxBuildStart,
@@ -120,6 +121,7 @@ export default function OpenOrdersTableRow(props: OpenOrdersTableRowProps) {
                         props: {
                             actionType: 'Limit Cancel Fail',
                             orderType: 'Limit',
+                            success: false,
                             direction: order.side === 'buy' ? 'Buy' : 'Sell',
                             txBuildDuration: getDurationSegment(
                                 timeOfTxBuildStart,
