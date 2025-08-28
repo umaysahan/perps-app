@@ -1,8 +1,9 @@
 import { useMemo, useRef } from 'react';
 import GenericTable from '~/components/Tables/GenericTable/GenericTable';
-import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
 import type { TableSortDirection } from '~/utils/CommonIFs';
+import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
 import type {
     DepositAndWithDrawalSortBy,
     DepositAndWithDrawalIF,
@@ -13,7 +14,6 @@ import DepositsWithdrawalsTableHeader, {
 import DepositsWithdrawalsTableRow, {
     type TransactionData,
 } from './DepositsWithdrawalsTableRow';
-import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
 import { useInfoApi } from '~/hooks/useInfoApi';
 
 function sortTransactionData(
@@ -80,12 +80,12 @@ export default function DepositsWithdrawalsTable(
     );
     const { fetchUserNonFundingLedgerUpdates } = useInfoApi();
 
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
     const currentUserRef = useRef<string>('');
-    currentUserRef.current = debugWallet.address;
+    currentUserRef.current = userAddress;
 
-    const viewAllLink = debugWallet.address
-        ? `${EXTERNAL_PAGE_URL_PREFIX}/depositsandwithdrawals/${debugWallet.address}`
+    const viewAllLink = userAddress
+        ? `${EXTERNAL_PAGE_URL_PREFIX}/depositsandwithdrawals/${userAddress}`
         : `${EXTERNAL_PAGE_URL_PREFIX}/depositsandwithdrawals`;
 
     return (
@@ -122,7 +122,7 @@ export default function DepositsWithdrawalsTable(
             defaultSortDirection='desc'
             tableModel={DepositsWithdrawalsTableModel}
             csvDataFetcher={fetchUserNonFundingLedgerUpdates}
-            csvDataFetcherArgs={[debugWallet.address, true]}
+            csvDataFetcherArgs={[userAddress, true]}
         />
     );
 }

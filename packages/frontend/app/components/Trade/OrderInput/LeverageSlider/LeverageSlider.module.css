@@ -5,9 +5,57 @@
     gap: var(--gap-s);
 }
 
+/* Modal-specific container styles */
+.leverageSliderContainer.modalContainer {
+}
+
 .containerTitle {
     color: var(--text2, #bcbcc4);
     font-size: var(--font-size-s, 12px);
+}
+
+.titleWithWarning {
+    position: relative;
+}
+
+/* Modal-specific title styles */
+.titleWithWarning.modalTitle {
+}
+
+.minimumWarning {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: rgba(239, 83, 80, 0.1);
+    color: var(--red);
+    font-size: var(--font-size-s, 12px);
+    white-space: nowrap;
+    z-index: 10;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.modalSliderWarning {
+    position: absolute;
+    bottom: 0px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--red);
+    padding: 0 var(--padding-s);
+    font-size: var(--font-size-s, 12px);
+    white-space: nowrap;
+    z-index: 10;
+    border-radius: var(--radius-xs);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .sliderWithValue {
@@ -16,6 +64,14 @@
     justify-content: space-between;
     width: 100%;
     gap: var(--gap-m);
+}
+
+.modalSliderContainer {
+    position: relative;
+    width: 100%;
+    padding-bottom: var(--padding-m);
+    padding-left: var(--padding-m);
+    padding-right: var(--padding-m);
 }
 
 .sliderContainer {
@@ -31,6 +87,15 @@
     height: 4px;
     cursor: pointer;
     margin: 20px 0 30px 0;
+}
+
+.sliderTrack:focus {
+    outline: 2px solid var(--accent1);
+    outline-offset: 2px;
+}
+
+.sliderTrack:focus .sliderKnob {
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.3);
 }
 
 .sliderTrack::before {
@@ -50,6 +115,54 @@
     width: 100%;
     height: 100%;
     background-color: var(--bg-dark4);
+    z-index: 0;
+}
+
+.sliderGreyedOut {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: #2b2a2f !important;
+    z-index: 5 !important;
+    pointer-events: none;
+    border-radius: 2px;
+}
+
+.sliderGreyedOut::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -1px;
+    bottom: 0;
+    width: 1px;
+    background-color: rgba(120, 120, 120, 0.8);
+}
+
+.minimumIndicator {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background-color: rgba(255, 255, 255, 0.9);
+    z-index: 5;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.minimumLabel {
+    position: absolute;
+    top: 12px;
+    /* transform: translateX(-130%); */
+    background-color: rgba(255, 255, 255, 0.95);
+    color: #333;
+    font-size: var(--font-size-xs);
+    padding: 2px 6px;
+    border-radius: 3px;
+    z-index: 2;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    cursor: default;
 }
 
 .sliderActive {
@@ -57,6 +170,7 @@
     top: 0;
     left: 0;
     height: 100%;
+    z-index: 2;
 }
 
 .sliderMarker {
@@ -67,7 +181,7 @@
     top: 50%;
     transform: translate(-50%, -50%);
     border: 2px solid;
-    z-index: 2;
+    z-index: 3;
 }
 
 .sliderMarkerCurrent {
@@ -83,7 +197,7 @@
     transform: translate(-50%, -50%);
     border: 2px solid;
     background-color: var(--bg-dark2) !important;
-    z-index: 3;
+    z-index: 15;
     cursor: grab;
     outline: none;
 }
@@ -116,7 +230,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    align-items: center;
     background-color: var(--bg-dark3);
     border-radius: var(--radius-s);
     padding: 0 var(--padding-s);
@@ -137,22 +250,6 @@
     font-size: var(--font-size-s, 12px);
 }
 
-/* remove afterwards */
-.randomMaxContainer {
-    display: flex;
-    width: 100%;
-    justify-content: space-between;
-    align-items: center;
-    font-size: var(--font-size-s);
-}
-
-.randomMaxContainer button {
-    outline: none;
-    border: none;
-    background: var(--accent1);
-    color: var(--text1);
-    padding: var(--padding-xs);
-}
 .modalInputContainer {
     display: flex;
     align-items: center;
@@ -174,10 +271,19 @@
     padding: 0 var(--padding-s);
 }
 
-.modalSliderContainer {
-    position: relative;
+/* remove afterwards */
+.randomMaxContainer {
+    display: flex;
     width: 100%;
-    padding-bottom: var(--padding-m);
-    padding-left: var(--padding-m);
-    padding-right: var(--padding-m);
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-s);
+}
+
+.randomMaxContainer button {
+    outline: none;
+    border: none;
+    background: var(--accent1);
+    color: var(--text1);
+    padding: var(--padding-xs);
 }

@@ -4,17 +4,74 @@ body {
     overscroll-behavior-x: none;
     touch-action: pan-y;
 }
-.mainContainer {
-    height: 100%;
-    display: grid;
-    grid-template-rows: 10px minmax(0, 1fr);
-}
 
 .container {
     height: 100%;
     display: grid;
     grid-template-rows: 1fr var(--trade-tables-height-desktop);
     gap: var(--gap-s);
+}
+
+.containerNew {
+    height: 100%;
+    display: grid;
+    grid-template-rows: 1fr var(--trade-tables-height-desktop);
+    grid-template-columns: 1fr var(--trade-module-width-desktop-small);
+    grid-template-areas:
+        'market_data order_input'
+        'table wallet';
+    gap: var(--gap-s);
+}
+
+.market_data {
+    grid-area: market_data;
+    height: 100%;
+    display: grid;
+    grid-template-rows: 40px 40px 1fr;
+    grid-template-columns: 1fr var(--order-book-width-desktop-small);
+    grid-template-areas:
+        'watchlist order_book'
+        'symbol_info order_book'
+        'chart order_book';
+    width: 100%;
+    gap: var(--gap-s);
+    overflow: hidden;
+}
+
+.order_book {
+    grid-area: order_book;
+}
+
+.order_input {
+    grid-area: order_input;
+}
+
+.order_book {
+    grid-area: order_book;
+}
+
+.wallet {
+    grid-area: wallet;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-dark2);
+    border-radius: var(--radius-m);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-s);
+    overflow: hidden;
+}
+
+@media (max-height: 750px) {
+    /* expand the order input to the full right col on short screens */
+    .containerNew {
+        grid-template-areas:
+            'top_left order_input'
+            'chart order_input';
+    }
+    .wallet {
+        display: none;
+    }
 }
 
 .containerTop,
@@ -27,17 +84,14 @@ body {
 }
 
 .containerTop {
+    width: 100%;
     transition: all 0.2s ease;
-    grid-template-columns: 1fr var(--order-book-width-desktop-small) var(
-            --trade-module-width-desktop-small
-        );
+    grid-template-columns: 1fr var(--order-book-width-desktop-small);
     gap: var(--gap-s);
 }
 
 .containerTop.orderBookLarge {
-    grid-template-columns:
-        1fr var(--order-book-width-desktop-large-doubled)
-        var(--trade-module-width-desktop-large);
+    grid-template-columns: 1fr var(--order-book-width-desktop-large-doubled);
 }
 
 .containerBottom {
@@ -54,17 +108,6 @@ body {
     border-radius: var(--radius-m);
     overflow-y: hidden;
     min-height: var(--trade-tables-min-height-desktop);
-}
-
-.wallet {
-    width: 100%;
-    height: 100%;
-    background: var(--bg-dark2);
-    border-radius: var(--radius-m);
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-s);
-    overflow: hidden;
 }
 
 .containerTopLeft {
@@ -131,15 +174,11 @@ body {
 /* Desktop styles (1920px and above) */
 @media only screen and (min-width: 1920px) {
     .containerTop {
-        grid-template-columns: 1fr var(--order-book-width-desktop-large) var(
-                --trade-module-width-desktop-large
-            );
+        grid-template-columns: 1fr var(--order-book-width-desktop-large);
     }
 
     .containerTop.orderBookLarge {
-        grid-template-columns:
-            1fr var(--order-book-width-desktop-large-doubled)
-            var(--trade-module-width-desktop-large);
+        grid-template-columns: 1fr var(--order-book-width-desktop-large-doubled);
     }
     .containerBottom {
         grid-template-columns: 1fr var(
@@ -151,7 +190,8 @@ body {
 
 /* Tablet styles */
 @media only screen and (max-width: 1080px) and (min-width: 769px) {
-    .containerTop {
+    .containerTop,
+    .containerTop.orderBookLarge {
         grid-template-columns: 1fr;
     }
 

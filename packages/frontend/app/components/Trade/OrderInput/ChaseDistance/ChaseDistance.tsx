@@ -3,8 +3,8 @@ import ComboBox from '~/components/Inputs/ComboBox/ComboBox';
 import NumFormattedInput from '~/components/Inputs/NumFormattedInput/NumFormattedInput';
 import styles from './ChaseDistance.module.css';
 import type { OrderBookMode } from '~/utils/orderbook/OrderBookIFs';
-import { AiOutlineQuestionCircle } from 'react-icons/ai';
 import Tooltip from '~/components/Tooltip/Tooltip';
+import { LuCircleHelp } from 'react-icons/lu';
 
 interface PropsIF {
     value: string;
@@ -71,7 +71,7 @@ const ChaseDistance: React.FC<PropsIF> = React.memo((props) => {
                 <div className={styles.detailLabel}>
                     <span>Max Bid</span>
                     <Tooltip content={'max bid explanation'} position='right'>
-                        <AiOutlineQuestionCircle size={13} />
+                        <LuCircleHelp size={12} />
                     </Tooltip>
                 </div>
                 <span className={styles.detailValue}>5.932</span>

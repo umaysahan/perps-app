@@ -1,10 +1,10 @@
 import React from 'react';
 import { FaChevronDown } from 'react-icons/fa';
-import { AiOutlineQuestionCircle } from 'react-icons/ai';
 import Tooltip from '~/components/Tooltip/Tooltip';
 import SVGIcon from '~/components/SvgIcon/SvgIcon';
 import useOutsideClick from '~/hooks/useOutsideClick';
 import styles from './ScaleOrders.module.css';
+import { LuCircleHelp } from 'react-icons/lu';
 
 interface DistributionOption<T extends string> {
     type: T;
@@ -47,7 +47,7 @@ export default function DistributionDropdown<T extends string>({
             <span className={styles.optionHeader}>
                 {label}
                 <Tooltip content={tooltipContent} position='right'>
-                    <AiOutlineQuestionCircle size={13} />
+                    <LuCircleHelp size={12} />
                 </Tooltip>
             </span>
 

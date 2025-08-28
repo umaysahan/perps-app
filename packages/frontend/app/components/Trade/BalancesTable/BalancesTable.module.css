@@ -5,12 +5,12 @@
     padding-left: var(--padding-s);
     gap: var(--gap-s);
     display: grid;
-    grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1fr 1.5fr 0.5fr;
+    grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1fr 0.5fr;
     align-items: center;
 }
 
 .rowContainer.noSendButton {
-    grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1fr 1.5fr;
+    grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr 1.5fr 1.5fr;
 }
 
 .headerContainer {
@@ -20,7 +20,7 @@
     padding-left: var(--padding-s);
     gap: var(--gap-s);
     display: grid;
-    grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1fr 1.5fr 0.5fr;
+    grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1fr 0.5fr;
     align-items: center;
 
     position: sticky;
@@ -30,7 +30,7 @@
 }
 
 .headerContainer.noSendButton {
-    grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1fr 1.5fr;
+    grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr 1.5fr 1.5fr;
 }
 
 .cell {
@@ -97,31 +97,26 @@
 @media (max-width: 1200px) {
     .rowContainer,
     .headerContainer {
-        grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1.5fr 0.5fr;
+        grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 0.5fr;
     }
 
     .rowContainer.noSendButton,
     .headerContainer.noSendButton {
-        grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 1.5fr;
-    }
-
-    .buyingPowerCell {
-        display: none;
+        grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr 1.5fr 1.5fr;
     }
 }
 
 @media (max-width: 900px) {
     .rowContainer,
     .headerContainer {
-        grid-template-columns: 1fr 1.5fr 1fr 1fr 1.5fr 0.5fr;
+        grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr 0.5fr;
     }
 
     .rowContainer.noSendButton,
     .headerContainer.noSendButton {
-        grid-template-columns: 1fr 1.5fr 1fr 1fr 1.5fr;
+        grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1.5fr;
     }
-
-    .availableBalanceCell {
+    .buyingPowerCell {
         display: none;
     }
 }
@@ -129,15 +124,14 @@
 @media (max-width: 700px) {
     .rowContainer,
     .headerContainer {
-        grid-template-columns: 1fr 1.5fr 1fr 1.5fr 0.5fr;
+        grid-template-columns: 1fr 1.5fr 1fr 1fr 0.5fr;
     }
 
     .rowContainer.noSendButton,
     .headerContainer.noSendButton {
         grid-template-columns: 1fr 1.5fr 1fr 1.5fr;
     }
-
-    .pnlCell {
+    .availableBalanceCell {
         display: none;
     }
 }
@@ -145,12 +139,12 @@
 @media (max-width: 480px) {
     .rowContainer,
     .headerContainer {
-        grid-template-columns: 1fr 1fr 1fr 0.5fr;
+        grid-template-columns: 1fr 1.5fr 1fr 0.5fr;
     }
 
     .rowContainer.noSendButton,
     .headerContainer.noSendButton {
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1.5fr 1.5fr;
     }
 
     .totalBalanceCell {
@@ -165,6 +159,9 @@
         font-size: 0.75rem;
         padding: 0.2rem 0.4rem;
     }
+    .pnlCell {
+        display: none;
+    }
 }
 
 .cell.positive {
@@ -173,4 +170,15 @@
 
 .cell.negative {
     color: var(--red);
+}
+
+.contractLink {
+    color: var(--accent1, #7371fc);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.contractLink:hover {
+    color: var(--text1, #f0f0f8);
+    text-decoration: underline;
 }

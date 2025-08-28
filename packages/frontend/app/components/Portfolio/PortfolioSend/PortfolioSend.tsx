@@ -1,5 +1,4 @@
 import { useState, useCallback, memo, useMemo } from 'react';
-import { AiOutlineQuestionCircle } from 'react-icons/ai';
 import Tooltip from '~/components/Tooltip/Tooltip';
 import styles from './PortfolioSend.module.css';
 import { useDebouncedCallback } from '~/hooks/useDebounce';
@@ -8,6 +7,7 @@ import TokenDropdown, {
     type Token,
 } from '~/components/TokenDropdown/TokenDropdown';
 import SimpleButton from '~/components/SimpleButton/SimpleButton';
+import { LuCircleHelp } from 'react-icons/lu';
 
 interface PortfolioSendProps {
     availableAmount: number;
@@ -226,7 +226,7 @@ function PortfolioSend({
                                     content={info?.tooltip}
                                     position='right'
                                 >
-                                    <AiOutlineQuestionCircle size={13} />
+                                    <LuCircleHelp size={12} />
                                 </Tooltip>
                             )}
                         </div>

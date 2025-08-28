@@ -1,78 +1,71 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import ScreenReaderAnnouncer from '~/components/ScreenReaderAnnouncer/ScreenReaderAnnouncer';
+import useDebounce from '~/hooks/useDebounce';
 import { useLeverageStore } from '~/stores/LeverageStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import { getLeverageIntervals } from '~/utils/functions/getLeverageIntervals';
+import InputField from './InputField';
 import styles from './LeverageSlider.module.css';
+import SliderTrack from './SliderTrack';
 
 interface LeverageSliderProps {
     value: number;
     onChange: (value: number) => void;
+    onClick?: (newLeverage: number) => void;
     className?: string;
     minimumInputValue?: number;
-    generateRandomMaximumInput?: () => void;
-    // NEW: Modal mode props
     modalMode?: boolean;
     maxLeverage?: number;
     hideTitle?: boolean;
+    minimumValue?: number;
 }
 
 const LEVERAGE_CONFIG = {
-    // Maximum leverage value that should use decimal increments (0.1)
     MAX_LEVERAGE_FOR_DECIMALS: 3,
-
-    // Decimal precision for low leverage values
     DECIMAL_PLACES_FOR_LOW_LEVERAGE: 1,
-
-    // Step increment for decimal leverage values
     DECIMAL_INCREMENT: 0.1,
-
-    // Default fallback max leverage when symbolInfo is not available
-    DEFAULT_MAX_LEVERAGE: 1,
-
-    // Number of tick marks to show on slider
+    DEFAULT_MAX_LEVERAGE: 100,
     TICK_COUNT_HIGH_LEVERAGE: 7,
     TICK_COUNT_LOW_LEVERAGE: 5,
     TICK_COUNT_THRESHOLD: 100,
 } as const;
 
 const SLIDER_CONFIG = {
-    // Knob radius in pixels for position calculations
     KNOB_RADIUS: 7,
-
-    // Color stops for leverage slider gradient
     COLOR_STOPS: [
-        { position: 0, color: '#26A69A' }, // teal
-        { position: 25, color: '#89C374' }, // green
-        { position: 50, color: '#EBDF4E' }, // yellow
-        { position: 75, color: '#EE9A4F' }, // orange
-        { position: 100, color: '#EF5350' }, // red
+        { position: 0, color: '#26A69A' },
+        { position: 25, color: '#89C374' },
+        { position: 50, color: '#EBDF4E' },
+        { position: 75, color: '#EE9A4F' },
+        { position: 100, color: '#EF5350' },
     ],
-
-    // Threshold for detecting "current" value on tick marks  (determines when tickmarks are highlighted)
     CURRENT_VALUE_THRESHOLD: 0.1,
 } as const;
 
 const UI_CONFIG = {
-    // Default opacity values
     INACTIVE_TICK_OPACITY: 0.3,
-
-    // Color values
     INACTIVE_LABEL_COLOR: '#808080',
-
-    // Minimum safe value for logarithmic calculations (so it never results in nan)
     MIN_SAFE_LOG_VALUE: 0.1,
 } as const;
+
+const WARNING_TIMEOUT_IN_MS = 2000;
 
 export default function LeverageSlider({
     value,
     onChange,
     className = '',
     minimumInputValue = 1,
-    generateRandomMaximumInput,
-    // NEW: Modal mode props with defaults
     modalMode = false,
     maxLeverage,
     hideTitle = false,
+    minimumValue,
+    onClick,
 }: LeverageSliderProps) {
     const { symbolInfo } = useTradeDataStore();
     const {
@@ -82,14 +75,15 @@ export default function LeverageSlider({
         getPreferredLeverage,
     } = useLeverageStore();
 
-    // Use maxLeverage from props (modal mode) or symbolInfo, fallback to default if not available
     const maximumInputValue = modalMode
         ? maxLeverage || LEVERAGE_CONFIG.DEFAULT_MAX_LEVERAGE
         : symbolInfo?.coin === 'BTC'
           ? 100
           : symbolInfo?.maxLeverage || LEVERAGE_CONFIG.DEFAULT_MAX_LEVERAGE;
 
-    // Always default to 1x leverage if no value provided
+    const effectiveMinimum =
+        minimumValue !== undefined ? minimumValue : minimumInputValue;
+
     const currentValue = value ?? 1;
     const [inputValue, setInputValue] = useState<string>(
         currentValue.toString(),
@@ -101,61 +95,547 @@ export default function LeverageSlider({
     const [hoveredTickIndex, setHoveredTickIndex] = useState<number | null>(
         null,
     );
+    const [unconstrainedSliderValue, setUnconstrainedSliderValue] =
+        useState<number>(0);
     const [hasInitializedLeverage, setHasInitializedLeverage] =
         useState<boolean>(false);
+    const [announceText, setAnnounceText] = useState<string>('');
 
     const sliderRef = useRef<HTMLDivElement>(null);
     const knobRef = useRef<HTMLDivElement>(null);
+    const currentValueRef = useRef<number>(currentValue);
 
-    // Helper function to get the actual rounded value (what user sees)
-    const getRoundedDisplayValue = (val: number): number => {
-        if (val < 3) {
-            // Round DOWN to nearest tenth
-            return Math.floor(val * 10) / 10;
-        } else {
-            // Round DOWN to nearest whole number
-            return Math.floor(val);
-        }
-    };
+    useEffect(() => {
+        currentValueRef.current = currentValue;
+    }, [currentValue]);
 
-    // Helper function to format values for input display (shows decimals below 3)
+    // Helper functions
     const formatValue = (val: number): string => {
         if (val < 3) {
-            // Round DOWN to nearest tenth, then format
             const roundedVal = Math.floor(val * 10) / 10;
             return roundedVal.toFixed(
                 LEVERAGE_CONFIG.DECIMAL_PLACES_FOR_LOW_LEVERAGE,
             );
         } else {
-            // Round DOWN to nearest whole number
             return Math.floor(val).toString();
         }
     };
 
-    // format values for labels
     const formatLabelValue = (val: number): string => {
         return Math.floor(val).toString();
     };
 
     const constrainValue = (val: number): number => {
-        return Math.max(minimumInputValue, Math.min(maximumInputValue, val));
+        return Math.max(effectiveMinimum, Math.min(maximumInputValue, val));
+    };
+
+    // Warning state management
+    const [sliderBelowMinimumLeverage, setSliderBelowMinimumLeverage] =
+        useState(false);
+    const [warningStartTime, setWarningStartTime] = useState<number | null>(
+        null,
+    );
+    const [minimumWarningShown, setMinimumWarningShown] = useState(false);
+    const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const sliderBelowMinimumLeverageDebounced = useDebounce(
+        sliderBelowMinimumLeverage,
+        200,
+    );
+
+    const shouldShowMinimumConstraints =
+        minimumValue !== undefined && minimumValue > 1;
+
+    // Clear any existing timeout
+    useEffect(() => {
+        return () => {
+            if (warningTimeoutRef.current) {
+                clearTimeout(warningTimeoutRef.current);
+                warningTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
+    // Track when warning state changes
+    useEffect(() => {
+        const shouldShowWarning =
+            shouldShowMinimumConstraints &&
+            (sliderBelowMinimumLeverage
+                ? isDragging
+                    ? true
+                    : sliderBelowMinimumLeverageDebounced
+                : false);
+
+        if (shouldShowWarning) {
+            // Clear any existing timeout when showing warning
+            if (warningTimeoutRef.current) {
+                clearTimeout(warningTimeoutRef.current);
+                warningTimeoutRef.current = null;
+            }
+
+            if (!warningStartTime) {
+                // Start showing warning
+                setWarningStartTime(Date.now());
+                setMinimumWarningShown(true);
+            }
+        } else if (warningStartTime) {
+            // If warning is being hidden, ensure it's been shown for at least 2 seconds
+            const timeShown = Date.now() - warningStartTime;
+            const remainingTime = Math.max(
+                0,
+                WARNING_TIMEOUT_IN_MS - timeShown,
+            );
+
+            if (remainingTime > 0) {
+                // Set a timeout to hide the warning after the remaining time
+                warningTimeoutRef.current = setTimeout(() => {
+                    setWarningStartTime(null);
+                    setMinimumWarningShown(false);
+                    warningTimeoutRef.current = null;
+                }, remainingTime);
+            } else {
+                // Already shown for 2+ seconds, can hide immediately
+                setWarningStartTime(null);
+                setMinimumWarningShown(false);
+            }
+        }
+    }, [
+        sliderBelowMinimumLeverage,
+        sliderBelowMinimumLeverageDebounced,
+        isDragging,
+        shouldShowMinimumConstraints,
+        warningStartTime,
+    ]);
+
+    const showMinimumWarning =
+        shouldShowMinimumConstraints &&
+        (minimumWarningShown ||
+            (sliderBelowMinimumLeverage
+                ? isDragging
+                    ? true
+                    : sliderBelowMinimumLeverageDebounced
+                : false));
+
+    const [hasShownMinimumWarning, setHasShownMinimumWarning] = useState(false);
+
+    const shouldShowInteractiveWarning = useMemo(() => {
+        // Don't show warnings if minimumValue is undefined or equals 1
+        if (!shouldShowMinimumConstraints) return false;
+
+        const minWithBuffer = minimumValue * 10 ** -0.08;
+        const isDraggingBelowMinimum =
+            isDragging && unconstrainedSliderValue <= minWithBuffer;
+
+        const isHoveringBelowMinimum =
+            !isDragging &&
+            hoveredTickIndex === null &&
+            isHovering &&
+            hoverValue !== null &&
+            hoverValue <= minWithBuffer;
+
+        return isDraggingBelowMinimum || isHoveringBelowMinimum;
+    }, [
+        shouldShowMinimumConstraints,
+        minimumValue,
+        unconstrainedSliderValue,
+        isDragging,
+        isHovering,
+        hoverValue,
+        hoveredTickIndex,
+    ]);
+
+    // Position and color calculations
+    const valueToPercentage = (val: number): number => {
+        if (isNaN(val) || isNaN(minimumInputValue) || isNaN(maximumInputValue))
+            return 0;
+        if (minimumInputValue <= 0 || maximumInputValue <= minimumInputValue)
+            return 0;
+
+        const safeVal = Math.max(
+            minimumInputValue,
+            Math.min(maximumInputValue, val),
+        );
+
+        if (maximumInputValue <= LEVERAGE_CONFIG.MAX_LEVERAGE_FOR_DECIMALS) {
+            return (
+                ((safeVal - minimumInputValue) /
+                    (maximumInputValue - minimumInputValue)) *
+                100
+            );
+        }
+
+        const safeMin = Math.max(
+            UI_CONFIG.MIN_SAFE_LOG_VALUE,
+            minimumInputValue,
+        );
+
+        try {
+            const minLog = Math.log(safeMin);
+            const maxLog = Math.log(maximumInputValue);
+            const valueLog = Math.log(safeVal);
+
+            return ((valueLog - minLog) / (maxLog - minLog)) * 100;
+        } catch (error) {
+            console.error('Error calculating percentage:', error);
+            return 0;
+        }
+    };
+
+    const percentageToValue = (percentage: number): number => {
+        if (minimumInputValue <= 0 || maximumInputValue <= minimumInputValue)
+            return minimumInputValue;
+
+        const boundedPercentage = Math.max(0, Math.min(100, percentage));
+
+        if (maximumInputValue <= LEVERAGE_CONFIG.MAX_LEVERAGE_FOR_DECIMALS) {
+            const value =
+                minimumInputValue +
+                (boundedPercentage / 100) *
+                    (maximumInputValue - minimumInputValue);
+            return value;
+        }
+
+        const safeMin = Math.max(
+            UI_CONFIG.MIN_SAFE_LOG_VALUE,
+            minimumInputValue,
+        );
+        const minLog = Math.log(safeMin);
+        const maxLog = Math.log(maximumInputValue);
+        const valueLog = minLog + (boundedPercentage / 100) * (maxLog - minLog);
+
+        return Math.exp(valueLog);
+    };
+
+    const getKnobPosition = (): number => {
+        if (isNaN(currentValue) || !isFinite(currentValue)) {
+            return 0;
+        }
+        return valueToPercentage(currentValue);
+    };
+
+    const getMinimumPercentage = (): number => {
+        if (!shouldShowMinimumConstraints) return 0;
+        return valueToPercentage(minimumValue);
+    };
+
+    const getColorAtPosition = (position: number): string => {
+        const colorStops = SLIDER_CONFIG.COLOR_STOPS;
+        if (isNaN(position) || !isFinite(position)) {
+            return colorStops[0].color;
+        }
+
+        const boundedPosition = Math.max(0, Math.min(100, position));
+
+        let lowerStop = colorStops[0];
+        let upperStop = colorStops[colorStops.length - 1];
+
+        for (let i = 0; i < colorStops.length - 1; i++) {
+            if (
+                boundedPosition >= colorStops[i].position &&
+                boundedPosition <= colorStops[i + 1].position
+            ) {
+                lowerStop = colorStops[i];
+                upperStop = colorStops[i + 1];
+                break;
+            }
+        }
+
+        if (boundedPosition === lowerStop.position) return lowerStop.color;
+        if (boundedPosition === upperStop.position) return upperStop.color;
+
+        const factor =
+            (boundedPosition - lowerStop.position) /
+            (upperStop.position - lowerStop.position);
+
+        const parseColor = (hex: string) => {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return { r, g, b };
+        };
+
+        const lowerColor = parseColor(lowerStop.color);
+        const upperColor = parseColor(upperStop.color);
+
+        const r = Math.round(
+            lowerColor.r + factor * (upperColor.r - lowerColor.r),
+        );
+        const g = Math.round(
+            lowerColor.g + factor * (upperColor.g - lowerColor.g),
+        );
+        const b = Math.round(
+            lowerColor.b + factor * (upperColor.b - lowerColor.b),
+        );
+
+        return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    const getKnobColor = (): string => {
+        return getColorAtPosition(getKnobPosition());
+    };
+
+    const createGradientString = (): string => {
+        return `linear-gradient(to right, 
+            #26A69A 0%, 
+            #89C374 25%, 
+            #EBDF4E 50%, 
+            #EE9A4F 75%, 
+            #EF5350 100%)`;
+    };
+
+    // Event handlers
+    const announceValueChange = (value: number) => {
+        const formattedValue = formatValue(value);
+        setAnnounceText('');
+        setTimeout(() => {
+            setAnnounceText(`Leverage ${formattedValue}x`);
+        }, 100);
+        setTimeout(() => setAnnounceText(''), 1500);
     };
 
     const handleLeverageChange = (newLeverage: number) => {
-        // In modal mode, skip store updates
-        if (!modalMode) {
-            // Update the preferred leverage in store with the exact value (no rounding)
-            setPreferredLeverage(newLeverage);
-        }
+        const newLeverageOrMinAllowedForUser = Math.max(
+            newLeverage,
+            minimumValue || 1,
+        );
 
-        // Always call the parent onChange with the exact value
+        setPreferredLeverage(newLeverageOrMinAllowedForUser);
+        onChange(newLeverageOrMinAllowedForUser);
+        announceValueChange(newLeverageOrMinAllowedForUser);
+    };
+
+    const handleSmoothLeverageChange = (newLeverage: number) => {
         onChange(newLeverage);
     };
 
-    const handleMarketChange = useCallback(() => {
-        // Skip market change logic in modal mode
-        if (modalMode) return;
+    const calculateValueFromPosition = (clientX: number): number => {
+        if (!sliderRef.current) return currentValue;
 
+        const rect = sliderRef.current.getBoundingClientRect();
+        const offsetX = Math.max(0, Math.min(clientX - rect.left, rect.width));
+
+        const knobRadius = SLIDER_CONFIG.KNOB_RADIUS;
+        const adjustedOffsetX = Math.max(
+            knobRadius,
+            Math.min(offsetX, rect.width - knobRadius),
+        );
+        const percentage =
+            ((adjustedOffsetX - knobRadius) / (rect.width - 2 * knobRadius)) *
+            100;
+
+        const newValue = percentageToValue(percentage);
+        return constrainValue(newValue);
+    };
+
+    // Track event handlers
+    const handleTrackMouseMove = (e: React.MouseEvent) => {
+        if (!sliderRef.current || isDragging) return;
+
+        const rect = sliderRef.current.getBoundingClientRect();
+        const offsetX = Math.max(
+            0,
+            Math.min(e.clientX - rect.left, rect.width),
+        );
+
+        const knobRadius = SLIDER_CONFIG.KNOB_RADIUS;
+        const adjustedOffsetX = Math.max(
+            knobRadius,
+            Math.min(offsetX, rect.width - knobRadius),
+        );
+        const percentage =
+            ((adjustedOffsetX - knobRadius) / (rect.width - 2 * knobRadius)) *
+            100;
+
+        const newValue = percentageToValue(percentage);
+        if (shouldShowMinimumConstraints && newValue < minimumValue!) {
+            return;
+        }
+
+        setHoverValue(newValue);
+        setIsHovering(true);
+        setHoveredTickIndex(null);
+    };
+
+    const handleTrackMouseLeave = () => {
+        setIsHovering(false);
+        setHoverValue(null);
+        setHoveredTickIndex(null);
+    };
+
+    const handleTrackClick = (e: React.MouseEvent) => {
+        const boundedValue = calculateValueFromPosition(e.clientX);
+        if (onClick) {
+            onClick(Math.max(boundedValue, minimumValue || 1));
+        } else {
+            handleLeverageChange(boundedValue);
+        }
+    };
+
+    const handleTrackTouchStart = (e: React.TouchEvent) => {
+        if ((e.target as HTMLElement).closest(`.${styles.sliderKnob}`)) {
+            return;
+        }
+
+        if (!e.touches[0]) return;
+
+        const boundedValue = calculateValueFromPosition(e.touches[0].clientX);
+        handleLeverageChange(boundedValue);
+        setIsDragging(true);
+        e.preventDefault();
+    };
+
+    const handleTrackMouseDown = (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest(`.${styles.sliderKnob}`)) {
+            return;
+        }
+
+        handleTrackClick(e);
+        setIsDragging(true);
+        e.preventDefault();
+    };
+
+    const handleKnobMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+        (e.target as HTMLElement).focus();
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleTickHover = (tickIndex: number) => {
+        setHoveredTickIndex(tickIndex);
+        const tickValue = tickMarks[tickIndex];
+        setHoverValue(tickValue);
+        setIsHovering(true);
+    };
+
+    const handleTickLeave = () => {
+        setHoveredTickIndex(null);
+        setHoverValue(null);
+        setIsHovering(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        let newValue = currentValue;
+        const step =
+            maximumInputValue <= LEVERAGE_CONFIG.MAX_LEVERAGE_FOR_DECIMALS
+                ? 0.1
+                : 1;
+
+        switch (e.key) {
+            case 'ArrowRight':
+            case 'ArrowUp':
+                newValue = Math.min(maximumInputValue, currentValue + step);
+                break;
+            case 'ArrowLeft':
+            case 'ArrowDown':
+                newValue = Math.max(minimumInputValue, currentValue - step);
+                break;
+            case 'Home':
+                newValue = minimumInputValue;
+                break;
+            case 'End':
+                newValue = maximumInputValue;
+                break;
+            case 'PageUp':
+                newValue = Math.min(
+                    maximumInputValue,
+                    currentValue + step * 10,
+                );
+                break;
+            case 'PageDown':
+                newValue = Math.max(
+                    minimumInputValue,
+                    currentValue - step * 10,
+                );
+                break;
+            default:
+                return;
+        }
+
+        e.preventDefault();
+        handleLeverageChange(newValue);
+    };
+
+    // Input handlers
+    const handleInputChange = (value: string) => {
+        setInputValue(value);
+    };
+
+    const handleInputBlur = () => {
+        const newValue = parseFloat(inputValue);
+        if (!isNaN(newValue)) {
+            const boundedValue = constrainValue(newValue);
+            handleLeverageChange(boundedValue);
+        } else {
+            setInputValue(formatValue(currentValue));
+        }
+    };
+
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.currentTarget.blur();
+        }
+    };
+
+    // Effects
+    useEffect(() => {
+        if (!shouldShowMinimumConstraints) {
+            setSliderBelowMinimumLeverage(false);
+            if (warningTimeoutRef.current) {
+                clearTimeout(warningTimeoutRef.current);
+                warningTimeoutRef.current = null;
+            }
+            return;
+        }
+
+        const isCurrentAtMinimum = minimumValue
+            ? Math.abs(currentValue - minimumValue) < 0.01
+            : false;
+
+        if (shouldShowInteractiveWarning) {
+            setSliderBelowMinimumLeverage(true);
+            if (warningTimeoutRef.current) {
+                clearTimeout(warningTimeoutRef.current);
+                warningTimeoutRef.current = null;
+            }
+        } else if (isCurrentAtMinimum && !hasShownMinimumWarning) {
+            setSliderBelowMinimumLeverage(true);
+            setHasShownMinimumWarning(true);
+
+            warningTimeoutRef.current = setTimeout(() => {
+                setSliderBelowMinimumLeverage(false);
+                warningTimeoutRef.current = null;
+            }, 3000);
+        } else if (!isCurrentAtMinimum) {
+            setHasShownMinimumWarning(false);
+            setSliderBelowMinimumLeverage(false);
+            if (warningTimeoutRef.current) {
+                clearTimeout(warningTimeoutRef.current);
+                warningTimeoutRef.current = null;
+            }
+        } else if (!shouldShowInteractiveWarning && hasShownMinimumWarning) {
+            setSliderBelowMinimumLeverage(false);
+            if (warningTimeoutRef.current) {
+                clearTimeout(warningTimeoutRef.current);
+                warningTimeoutRef.current = null;
+            }
+        }
+
+        return () => {
+            if (warningTimeoutRef.current) {
+                clearTimeout(warningTimeoutRef.current);
+                warningTimeoutRef.current = null;
+            }
+        };
+    }, [
+        currentValue,
+        minimumValue,
+        shouldShowInteractiveWarning,
+        hasShownMinimumWarning,
+        shouldShowMinimumConstraints,
+    ]);
+
+    const handleMarketChange = useCallback(() => {
         const effectiveSymbol = symbolInfo?.coin;
         const currentMaxLeverage =
             effectiveSymbol === 'BTC' ? 100 : symbolInfo?.maxLeverage;
@@ -164,7 +644,6 @@ export default function LeverageSlider({
             return;
         }
 
-        // Check if market has changed or if this is the first initialization
         const isMarketChange = currentMarket !== effectiveSymbol;
         const isFirstLoad = !hasInitializedLeverage;
 
@@ -173,18 +652,16 @@ export default function LeverageSlider({
                 `LeverageSlider: Applying leverage for ${effectiveSymbol} (${currentMaxLeverage}x max)`,
             );
 
-            // Validate and apply leverage for this market
             const validatedLeverage = validateAndApplyLeverageForMarket(
                 effectiveSymbol,
                 currentMaxLeverage,
                 minimumInputValue,
             );
 
-            // Use the exact validated leverage
             onChange(validatedLeverage);
             setHasInitializedLeverage(true);
         } else {
-            // Even if no market change, ensure we have the right leverage for the current maxLeverage
+            if (modalMode) return;
             const currentPreference = getPreferredLeverage();
             const shouldUpdate =
                 currentPreference !== value ||
@@ -201,7 +678,6 @@ export default function LeverageSlider({
                     minimumInputValue,
                 );
 
-                // Use the exact validated leverage (no rounding)
                 onChange(validatedLeverage);
             }
         }
@@ -211,39 +687,31 @@ export default function LeverageSlider({
         currentMarket,
         minimumInputValue,
         hasInitializedLeverage,
-        modalMode, // Add modalMode to dependencies
+        modalMode,
+        value,
+        maximumInputValue,
+        onChange,
+        validateAndApplyLeverageForMarket,
+        getPreferredLeverage,
     ]);
 
-    // Market change detection and leverage validation (skip in modal mode)
     useEffect(() => {
-        if (!modalMode) {
-            handleMarketChange();
-        }
-    }, [handleMarketChange, modalMode]);
+        handleMarketChange();
+    }, [handleMarketChange]);
 
-    // Handle smooth leverage changes during dragging (no rounding)
-    const handleSmoothLeverageChange = (newLeverage: number) => {
-        // During dragging, don't round - just update parent with smooth value
-        onChange(newLeverage);
-    };
-
-    // Update input value when prop value changes
     useEffect(() => {
         setInputValue(formatValue(currentValue));
     }, [currentValue, maximumInputValue]);
 
-    // Initialize input value on first render and notify parent if no value was provided
     useEffect(() => {
-        if (inputValue === '' && !modalMode) {
+        if (inputValue === '') {
             setInputValue(formatValue(currentValue));
-            // If no value was provided, set it to 1x
             if (value === undefined || value === null) {
                 handleLeverageChange(1);
             }
         }
-    }, [maximumInputValue, modalMode]);
+    }, [maximumInputValue]);
 
-    // Generate tick marks using centralized logic
     useEffect(() => {
         const ticks = getLeverageIntervals(
             maximumInputValue,
@@ -252,216 +720,7 @@ export default function LeverageSlider({
         setTickMarks(ticks);
     }, [minimumInputValue, maximumInputValue]);
 
-    // Convert value to percentage position on slider
-    const valueToPercentage = (val: number): number => {
-        // Check for invalid inputs
-        if (isNaN(val) || isNaN(minimumInputValue) || isNaN(maximumInputValue))
-            return 0;
-        if (minimumInputValue <= 0 || maximumInputValue <= minimumInputValue)
-            return 0;
-
-        // Safety check to prevent errors
-        const safeVal = Math.max(
-            minimumInputValue,
-            Math.min(maximumInputValue, val),
-        );
-
-        // For low leverage (≤ threshold), use linear scale
-        if (maximumInputValue <= LEVERAGE_CONFIG.MAX_LEVERAGE_FOR_DECIMALS) {
-            return (
-                ((safeVal - minimumInputValue) /
-                    (maximumInputValue - minimumInputValue)) *
-                100
-            );
-        }
-
-        // For higher leverage, use logarithmic scale
-        const safeMin = Math.max(
-            UI_CONFIG.MIN_SAFE_LOG_VALUE,
-            minimumInputValue,
-        );
-
-        try {
-            const minLog = Math.log(safeMin);
-            const maxLog = Math.log(maximumInputValue);
-            const valueLog = Math.log(safeVal);
-
-            // Percentage calculation
-            return ((valueLog - minLog) / (maxLog - minLog)) * 100;
-        } catch (error) {
-            console.error('Error calculating percentage:', error);
-            return 0;
-        }
-    };
-
-    // Convert percentage position to value (no rounding for smooth movement)
-    const percentageToValue = (percentage: number): number => {
-        if (minimumInputValue <= 0 || maximumInputValue <= minimumInputValue)
-            return minimumInputValue;
-
-        // Bound the percentage between 0 and 100
-        const boundedPercentage = Math.max(0, Math.min(100, percentage));
-
-        // For low leverage (≤ threshold), use linear scale
-        if (maximumInputValue <= LEVERAGE_CONFIG.MAX_LEVERAGE_FOR_DECIMALS) {
-            const value =
-                minimumInputValue +
-                (boundedPercentage / 100) *
-                    (maximumInputValue - minimumInputValue);
-            return value; // No rounding for smooth movement
-        }
-
-        // For higher leverage, use logarithmic scale
-        const safeMin = Math.max(
-            UI_CONFIG.MIN_SAFE_LOG_VALUE,
-            minimumInputValue,
-        );
-        const minLog = Math.log(safeMin);
-        const maxLog = Math.log(maximumInputValue);
-        const valueLog = minLog + (boundedPercentage / 100) * (maxLog - minLog);
-
-        return Math.exp(valueLog);
-    };
-
-    // Get position for the knob as percentage
-    const getKnobPosition = (): number => {
-        if (isNaN(currentValue)) {
-            return 0;
-        }
-        return valueToPercentage(currentValue);
-    };
-
-    // Get color based on position
-    const getColorAtPosition = (position: number): string => {
-        const colorStops = SLIDER_CONFIG.COLOR_STOPS;
-
-        // Ensure position is between 0 and 100
-        const boundedPosition = Math.max(0, Math.min(100, position));
-
-        // Find the two color stops that our position falls between
-        let lowerStop = colorStops[0];
-        let upperStop = colorStops[colorStops.length - 1];
-
-        for (let i = 0; i < colorStops.length - 1; i++) {
-            if (
-                boundedPosition >= colorStops[i].position &&
-                boundedPosition <= colorStops[i + 1].position
-            ) {
-                lowerStop = colorStops[i];
-                upperStop = colorStops[i + 1];
-                break;
-            }
-        }
-
-        // If exactly on a stop, return that color
-        if (boundedPosition === lowerStop.position) return lowerStop.color;
-        if (boundedPosition === upperStop.position) return upperStop.color;
-
-        // Calculate the color interpolation factor
-        const factor =
-            (boundedPosition - lowerStop.position) /
-            (upperStop.position - lowerStop.position);
-
-        // Parse the hex colors to RGB
-        const parseColor = (hex: string) => {
-            const r = parseInt(hex.slice(1, 3), 16);
-            const g = parseInt(hex.slice(3, 5), 16);
-            const b = parseInt(hex.slice(5, 7), 16);
-            return { r, g, b };
-        };
-
-        const lowerColor = parseColor(lowerStop.color);
-        const upperColor = parseColor(upperStop.color);
-
-        // Interpolate between the two colors
-        const r = Math.round(
-            lowerColor.r + factor * (upperColor.r - lowerColor.r),
-        );
-        const g = Math.round(
-            lowerColor.g + factor * (upperColor.g - lowerColor.g),
-        );
-        const b = Math.round(
-            lowerColor.b + factor * (upperColor.b - lowerColor.b),
-        );
-
-        return `rgb(${r}, ${g}, ${b})`;
-    };
-
-    // Get color for the knob based on percentage position
-    const getKnobColor = (): string => {
-        return getColorAtPosition(getKnobPosition());
-    };
-
-    // Handle mouse move over track for hover preview
-    const handleTrackMouseMove = (e: React.MouseEvent) => {
-        if (!sliderRef.current || isDragging) return;
-
-        const rect = sliderRef.current.getBoundingClientRect();
-        const offsetX = Math.max(
-            0,
-            Math.min(e.clientX - rect.left, rect.width),
-        );
-
-        // Account for knob margins when calculating percentage
-        const knobRadius = SLIDER_CONFIG.KNOB_RADIUS;
-        const adjustedOffsetX = Math.max(
-            knobRadius,
-            Math.min(offsetX, rect.width - knobRadius),
-        );
-        const percentage =
-            ((adjustedOffsetX - knobRadius) / (rect.width - 2 * knobRadius)) *
-            100;
-
-        // Convert percentage to value (no rounding for smooth preview)
-        const newValue = percentageToValue(percentage);
-
-        // Ensure value is within min/max bounds
-        const boundedValue = constrainValue(newValue);
-
-        setHoverValue(boundedValue);
-        setIsHovering(true);
-        // Clear any tick-specific hover when hovering over track
-        setHoveredTickIndex(null);
-    };
-
-    // Handle mouse leave from track
-    const handleTrackMouseLeave = () => {
-        setIsHovering(false);
-        setHoverValue(null);
-        setHoveredTickIndex(null);
-    };
-
-    // Handle track click to set value
-    const handleTrackClick = (e: React.MouseEvent) => {
-        if (!sliderRef.current) return;
-
-        const rect = sliderRef.current.getBoundingClientRect();
-        const offsetX = Math.max(
-            0,
-            Math.min(e.clientX - rect.left, rect.width),
-        );
-
-        // Account for knob margins when calculating percentage
-        const knobRadius = SLIDER_CONFIG.KNOB_RADIUS;
-        const adjustedOffsetX = Math.max(
-            knobRadius,
-            Math.min(offsetX, rect.width - knobRadius),
-        );
-        const percentage =
-            ((adjustedOffsetX - knobRadius) / (rect.width - 2 * knobRadius)) *
-            100;
-
-        // Convert percentage to value (no rounding for smooth movement)
-        const newValue = percentageToValue(percentage);
-
-        // Ensure value is within min/max bounds
-        const boundedValue = constrainValue(newValue);
-
-        // Use the exact value for clicks (no rounding)
-        handleLeverageChange(boundedValue);
-    };
-
-    // Handle dragging functionality
+    // Dragging effect
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isDragging || !sliderRef.current) return;
@@ -472,7 +731,6 @@ export default function LeverageSlider({
                 Math.min(e.clientX - rect.left, rect.width),
             );
 
-            // Account for knob margins when calculating percentage
             const knobRadius = SLIDER_CONFIG.KNOB_RADIUS;
             const adjustedOffsetX = Math.max(
                 knobRadius,
@@ -483,13 +741,21 @@ export default function LeverageSlider({
                     (rect.width - 2 * knobRadius)) *
                 100;
 
-            // Convert percentage to value (no rounding for smooth movement)
             const newValue = percentageToValue(percentage);
-
-            // Ensure value is within min/max bounds
+            setUnconstrainedSliderValue(newValue);
             const boundedValue = constrainValue(newValue);
 
-            // Use smooth dragging (no rounding during drag)
+            // Reset warning state if user moves above minimum value
+            if (minimumValue && newValue > minimumValue) {
+                setSliderBelowMinimumLeverage(false);
+                if (warningTimeoutRef.current) {
+                    clearTimeout(warningTimeoutRef.current);
+                    warningTimeoutRef.current = null;
+                }
+                setWarningStartTime(null);
+                setMinimumWarningShown(false);
+            }
+
             handleSmoothLeverageChange(boundedValue);
         };
 
@@ -503,7 +769,6 @@ export default function LeverageSlider({
                 Math.min(touch.clientX - rect.left, rect.width),
             );
 
-            // Account for knob margins when calculating percentage
             const knobRadius = SLIDER_CONFIG.KNOB_RADIUS;
             const adjustedOffsetX = Math.max(
                 knobRadius,
@@ -514,41 +779,30 @@ export default function LeverageSlider({
                     (rect.width - 2 * knobRadius)) *
                 100;
 
-            // Convert percentage to value (no rounding for smooth movement)
             const newValue = percentageToValue(percentage);
-
-            // Ensure value is within min/max bounds
             const boundedValue = constrainValue(newValue);
 
-            // Use smooth dragging (no rounding during drag)
             handleSmoothLeverageChange(boundedValue);
-
-            // Prevent scrolling while dragging
             e.preventDefault();
         };
 
         const handleMouseUp = () => {
             if (isDragging && !modalMode) {
-                // Keep the exact value when dragging ends (no rounding/snapping)
-                setPreferredLeverage(currentValue);
+                setPreferredLeverage(currentValueRef.current);
             }
             setIsDragging(false);
         };
 
         const handleTouchEnd = () => {
             if (isDragging && !modalMode) {
-                // Keep the exact value when dragging ends (no rounding/snapping)
-                setPreferredLeverage(currentValue);
+                setPreferredLeverage(currentValueRef.current);
             }
             setIsDragging(false);
         };
 
         if (isDragging) {
-            // Mouse events
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
-
-            // Touch events
             document.addEventListener('touchmove', handleTouchMove, {
                 passive: false,
             });
@@ -557,375 +811,116 @@ export default function LeverageSlider({
         }
 
         return () => {
-            // Clean up event listeners
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
             document.removeEventListener('touchmove', handleTouchMove);
             document.removeEventListener('touchend', handleTouchEnd);
             document.removeEventListener('touchcancel', handleTouchEnd);
         };
-    }, [
-        isDragging,
-        minimumInputValue,
-        maximumInputValue,
-        currentValue,
-        modalMode,
-    ]);
+    }, [isDragging, minimumInputValue, maximumInputValue, modalMode]);
 
-    const handleKnobMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-        (e.target as HTMLElement).focus();
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDragging(true);
+    const containerClasses = [
+        styles.leverageSliderContainer,
+        className,
+        modalMode && styles.modalContainer,
+        currentValue !== 1 && styles.sliderContainerNotAtFirst,
+    ]
+        .filter(Boolean)
+        .join(' ');
+
+    const titleClasses = [
+        styles.titleWithWarning,
+        modalMode && styles.modalTitle,
+    ]
+        .filter(Boolean)
+        .join(' ');
+
+    const warningClasses = [
+        modalMode ? styles.modalSliderWarning : styles.minimumWarning,
+    ].join(' ');
+
+    const sliderContainerClasses = [
+        modalMode ? styles.modalSliderContainer : styles.sliderWithValue,
+    ].join(' ');
+
+    const inputFieldProps = {
+        value: inputValue,
+        currentValue: currentValue,
+        isDragging: isDragging,
+        modalMode: modalMode,
+        knobColor: getKnobColor(),
+        onChange: handleInputChange,
+        onBlur: handleInputBlur,
+        onKeyDown: handleInputKeyDown,
+        formatValue: formatValue,
+    };
+    const sliderTrackProps = {
+        sliderRef: sliderRef,
+        knobRef: knobRef,
+        currentValue: currentValue,
+        value: value,
+        minimumInputValue: minimumInputValue,
+        maximumInputValue: maximumInputValue,
+        minimumValue: minimumValue,
+        shouldShowMinimumConstraints: shouldShowMinimumConstraints,
+        tickMarks: tickMarks,
+        hoveredTickIndex: hoveredTickIndex,
+        hoverValue: hoverValue,
+        isHovering: isHovering,
+        knobPosition: getKnobPosition(),
+        minimumPercentage: getMinimumPercentage(),
+        gradientString: createGradientString(),
+        knobColor: getKnobColor(),
+        onClick: onClick,
+        onKeyDown: handleKeyDown,
+        onTrackMouseDown: handleTrackMouseDown,
+        onTrackTouchStart: handleTrackTouchStart,
+        onTrackMouseMove: handleTrackMouseMove,
+        onTrackMouseLeave: handleTrackMouseLeave,
+        onKnobMouseDown: handleKnobMouseDown,
+        onTickHover: handleTickHover,
+        onTickLeave: handleTickLeave,
+        onLeverageChange: handleLeverageChange,
+        valueToPercentage: valueToPercentage,
+        getColorAtPosition: getColorAtPosition,
+        formatLabelValue: formatLabelValue,
+        setSliderBelowMinimumLeverage: setSliderBelowMinimumLeverage,
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setInputValue(e.target.value);
-    };
-
-    const handleInputBlur = () => {
-        const newValue = parseFloat(inputValue);
-        if (!isNaN(newValue)) {
-            // Ensure value is within min/max bounds but don't round
-            const boundedValue = constrainValue(newValue);
-            // Use the exact bounded value (no rounding)
-            handleLeverageChange(boundedValue);
-        } else {
-            // If input is invalid, revert to current value
-            setInputValue(formatValue(currentValue));
-        }
-    };
-
-    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            e.currentTarget.blur();
-        }
-    };
-
-    // Handle tick mark/label hover
-    const handleTickHover = (tickIndex: number) => {
-        setHoveredTickIndex(tickIndex);
-        const tickValue = tickMarks[tickIndex];
-        setHoverValue(tickValue);
-        setIsHovering(true);
-    };
-
-    const handleTickLeave = () => {
-        setHoveredTickIndex(null);
-        setHoverValue(null);
-        setIsHovering(false);
-    };
-
-    // Creates gradient string for the active part of the slider
-    const createGradientString = (): string => {
-        // fixed color positions
-        return `linear-gradient(to right, 
-            #26A69A 0%, 
-            #89C374 25%, 
-            #EBDF4E 50%, 
-            #EE9A4F 75%, 
-            #EF5350 100%)`;
-    };
-
-    if (modalMode) {
-        // Modal layout: Input at top, slider below
-        return (
-            <div
-                className={`${styles.leverageSliderContainer} ${className} ${currentValue !== 1 ? styles.sliderContainerNotAtFirst : ''}`}
-            >
-                {!hideTitle && (
-                    <h3 className={styles.containerTitle}>Leverage</h3>
-                )}
-
-                {/* Input at top for modal mode */}
-                <div className={styles.modalInputContainer}>
-                    <input
-                        type='text'
-                        value={
-                            isDragging ? formatValue(currentValue) : inputValue
-                        }
-                        onChange={handleInputChange}
-                        onBlur={handleInputBlur}
-                        onKeyDown={handleInputKeyDown}
-                        className={styles.modalValueInput}
-                        aria-label='Leverage value'
-                        style={{
-                            color: isDragging ? getKnobColor() : 'inherit',
-                        }}
-                        placeholder=''
-                    />
-                </div>
-
-                {/* Slider container for modal mode */}
-                <div className={styles.modalSliderContainer}>
-                    <div
-                        ref={sliderRef}
-                        className={styles.sliderTrack}
-                        onClick={handleTrackClick}
-                        onMouseMove={handleTrackMouseMove}
-                        onMouseLeave={handleTrackMouseLeave}
-                    >
-                        {/* Dark background track */}
-                        <div className={styles.sliderBackground}></div>
-
-                        {/* Active colored portion - using fixed position gradient */}
-                        <div
-                            className={styles.sliderActive}
-                            style={{
-                                width: `${getKnobPosition()}%`,
-                                background: createGradientString(),
-                                backgroundSize: `${100 / (getKnobPosition() / 100)}% 100%`,
-                                backgroundPosition: 'left center',
-                            }}
-                        ></div>
-
-                        {/* Slider markers */}
-                        {tickMarks.map((tickValue, index) => {
-                            const position = valueToPercentage(tickValue);
-                            const isActive = tickValue <= currentValue;
-                            const isCurrent =
-                                Math.abs(tickValue - value) <
-                                SLIDER_CONFIG.CURRENT_VALUE_THRESHOLD;
-                            // Only highlight if this specific tick is hovered OR if the hover value exactly matches this tick
-                            const isHovered =
-                                hoveredTickIndex === index ||
-                                (hoverValue === tickValue && isHovering);
-                            const tickColor = getColorAtPosition(position);
-
-                            return (
-                                <div
-                                    key={index}
-                                    className={`${styles.sliderMarker} ${
-                                        isActive ? styles.active : ''
-                                    } ${
-                                        isCurrent
-                                            ? styles.sliderMarkerCurrent
-                                            : ''
-                                    } ${
-                                        isHovered
-                                            ? styles.sliderMarkerHovered
-                                            : ''
-                                    }`}
-                                    style={{
-                                        left: `${position}%`,
-                                        backgroundColor:
-                                            isActive || isHovered
-                                                ? tickColor
-                                                : 'transparent',
-                                        borderColor:
-                                            isActive || isHovered
-                                                ? 'transparent'
-                                                : `rgba(255, 255, 255, ${UI_CONFIG.INACTIVE_TICK_OPACITY})`,
-                                    }}
-                                    onMouseEnter={() => handleTickHover(index)}
-                                    onMouseLeave={handleTickLeave}
-                                ></div>
-                            );
-                        })}
-
-                        {/* Draggable knob */}
-                        <div
-                            ref={knobRef}
-                            className={styles.sliderKnob}
-                            style={{
-                                left: `${getKnobPosition()}%`,
-                                borderColor: getKnobColor(),
-                                backgroundColor: 'transparent',
-                            }}
-                            onMouseDown={handleKnobMouseDown}
-                            onTouchStart={handleKnobMouseDown}
-                            tabIndex={-1}
-                        ></div>
-                    </div>
-
-                    <div className={styles.labelContainer}>
-                        {tickMarks.map((tickValue, index) => {
-                            const position = valueToPercentage(tickValue);
-                            const isActive = tickValue <= value;
-                            // Only highlight if this specific tick is hovered OR if the hover value exactly matches this tick
-                            const isHovered =
-                                hoveredTickIndex === index ||
-                                (hoverValue === tickValue && isHovering);
-                            const tickColor = getColorAtPosition(position);
-
-                            return (
-                                <div
-                                    key={index}
-                                    className={`${styles.valueLabel} ${
-                                        isHovered
-                                            ? styles.valueLabelHovered
-                                            : ''
-                                    }`}
-                                    style={{
-                                        left: `${position}%`,
-                                        color:
-                                            isActive || isHovered
-                                                ? tickColor
-                                                : UI_CONFIG.INACTIVE_LABEL_COLOR,
-                                    }}
-                                    onClick={() =>
-                                        handleLeverageChange(tickValue)
-                                    }
-                                    onMouseEnter={() => handleTickHover(index)}
-                                    onMouseLeave={handleTickLeave}
-                                >
-                                    {formatLabelValue(tickValue)}x
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Regular layout: Slider and input side by side
     return (
-        <div
-            className={`${styles.leverageSliderContainer} ${className} ${currentValue !== 1 ? styles.sliderContainerNotAtFirst : ''}`}
-        >
-            {!hideTitle && <h3 className={styles.containerTitle}>Leverage</h3>}
+        <div className={containerClasses}>
+            {!hideTitle && (
+                <div className={titleClasses}>
+                    <h3 className={styles.containerTitle}>Leverage</h3>
+                    {!modalMode && showMinimumWarning && (
+                        <div className={warningClasses}>
+                            {minimumValue !== undefined && (
+                                <>Close position to reduce minimum leverage</>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
-            <div className={styles.sliderWithValue}>
-                <div className={styles.sliderContainer}>
-                    <div
-                        ref={sliderRef}
-                        className={styles.sliderTrack}
-                        onClick={handleTrackClick}
-                        onMouseMove={handleTrackMouseMove}
-                        onMouseLeave={handleTrackMouseLeave}
-                    >
-                        {/* Dark background track */}
-                        <div className={styles.sliderBackground}></div>
+            <div className={sliderContainerClasses}>
+                {modalMode && <InputField {...inputFieldProps} />}
 
-                        {/* Active colored portion - using fixed position gradient */}
-                        <div
-                            className={styles.sliderActive}
-                            style={{
-                                width: `${getKnobPosition()}%`,
-                                background: createGradientString(),
-                                backgroundSize: `${100 / (getKnobPosition() / 100)}% 100%`,
-                                backgroundPosition: 'left center',
-                            }}
-                        ></div>
+                <div className={modalMode ? undefined : styles.sliderContainer}>
+                    {modalMode && showMinimumWarning && (
+                        <div className={warningClasses}>
+                            {minimumValue !== undefined && (
+                                <>Close position to reduce minimum leverage</>
+                            )}
+                        </div>
+                    )}
 
-                        {/* Slider markers */}
-                        {tickMarks.map((tickValue, index) => {
-                            const position = valueToPercentage(tickValue);
-                            const isActive = tickValue <= currentValue;
-                            const isCurrent =
-                                Math.abs(tickValue - value) <
-                                SLIDER_CONFIG.CURRENT_VALUE_THRESHOLD;
-                            // Only highlight if this specific tick is hovered OR if the hover value exactly matches this tick
-                            const isHovered =
-                                hoveredTickIndex === index ||
-                                (hoverValue === tickValue && isHovering);
-                            const tickColor = getColorAtPosition(position);
-
-                            return (
-                                <div
-                                    key={index}
-                                    className={`${styles.sliderMarker} ${
-                                        isActive ? styles.active : ''
-                                    } ${
-                                        isCurrent
-                                            ? styles.sliderMarkerCurrent
-                                            : ''
-                                    } ${
-                                        isHovered
-                                            ? styles.sliderMarkerHovered
-                                            : ''
-                                    }`}
-                                    style={{
-                                        left: `${position}%`,
-                                        backgroundColor:
-                                            isActive || isHovered
-                                                ? tickColor
-                                                : 'transparent',
-                                        borderColor:
-                                            isActive || isHovered
-                                                ? 'transparent'
-                                                : `rgba(255, 255, 255, ${UI_CONFIG.INACTIVE_TICK_OPACITY})`,
-                                    }}
-                                    onMouseEnter={() => handleTickHover(index)}
-                                    onMouseLeave={handleTickLeave}
-                                ></div>
-                            );
-                        })}
-
-                        {/* Draggable knob */}
-                        <div
-                            ref={knobRef}
-                            className={styles.sliderKnob}
-                            style={{
-                                left: `${getKnobPosition()}%`,
-                                borderColor: getKnobColor(),
-                                backgroundColor: 'transparent',
-                            }}
-                            onMouseDown={handleKnobMouseDown}
-                            onTouchStart={handleKnobMouseDown}
-                            tabIndex={-1}
-                        ></div>
-                    </div>
-
-                    <div className={styles.labelContainer}>
-                        {tickMarks.map((tickValue, index) => {
-                            const position = valueToPercentage(tickValue);
-                            const isActive = tickValue <= value;
-                            // Only highlight if this specific tick is hovered OR if the hover value exactly matches this tick
-                            const isHovered =
-                                hoveredTickIndex === index ||
-                                (hoverValue === tickValue && isHovering);
-                            const tickColor = getColorAtPosition(position);
-
-                            return (
-                                <div
-                                    key={index}
-                                    className={`${styles.valueLabel} ${
-                                        isHovered
-                                            ? styles.valueLabelHovered
-                                            : ''
-                                    }`}
-                                    style={{
-                                        left: `${position}%`,
-                                        color:
-                                            isActive || isHovered
-                                                ? tickColor
-                                                : UI_CONFIG.INACTIVE_LABEL_COLOR,
-                                    }}
-                                    onClick={() =>
-                                        handleLeverageChange(tickValue)
-                                    }
-                                    onMouseEnter={() => handleTickHover(index)}
-                                    onMouseLeave={handleTickLeave}
-                                >
-                                    {formatLabelValue(tickValue)}x
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <SliderTrack {...sliderTrackProps} />
                 </div>
 
-                {/* Current value display with input */}
-                <div className={styles.valueDisplay}>
-                    <input
-                        type='text'
-                        value={
-                            isDragging ? formatValue(currentValue) : inputValue
-                        }
-                        onChange={handleInputChange}
-                        onBlur={handleInputBlur}
-                        onKeyDown={handleInputKeyDown}
-                        className={styles.valueInput}
-                        aria-label='Leverage value'
-                        style={{
-                            color: isDragging ? getKnobColor() : 'inherit',
-                        }}
-                        placeholder=''
-                    />
-                    <span className={styles.valueSuffix}>x</span>
-                </div>
+                {!modalMode && <InputField {...inputFieldProps} />}
             </div>
+
+            <ScreenReaderAnnouncer text={announceText} />
         </div>
     );
 }

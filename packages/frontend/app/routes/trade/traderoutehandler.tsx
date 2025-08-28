@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import { getLS, processSymbolUrlParam } from '~/utils/AppUtils';
-import { WsChannels } from '~/utils/Constants';
+import { MARKET_INFO_ENDPOINT, WsChannels } from '~/utils/Constants';
 
 export default function TradeRouteHandler() {
     const { marketId } = useParams<{ marketId: string }>(); // Get marketId from URL
@@ -27,7 +27,7 @@ export default function TradeRouteHandler() {
         } else {
             urlSymbol = processSymbolUrlParam(urlSymbol);
 
-            const response = await fetch(`https://api.hyperliquid.xyz/info`, {
+            const response = await fetch(MARKET_INFO_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

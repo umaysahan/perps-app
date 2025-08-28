@@ -3,6 +3,7 @@ import type {
     IDatafeedChartApi,
     LibrarySymbolInfo,
     Mark,
+    OnReadyCallback,
 } from '~/tv/charting_library/charting_library';
 import { WsChannels } from '~/utils/Constants';
 import {
@@ -24,11 +25,21 @@ const subscriptions = new Map<
     { subId: number; unsubscribe: () => void }
 >();
 
+export type CustomDataFeedType = IDatafeedChartApi & {
+    updateUserAddress: (address: string) => void;
+} & { onReady(callback: OnReadyCallback): void };
+
 export const createDataFeed = (
     info: Info | null,
     addToFetchedChannels: (channel: string) => void,
-): IDatafeedChartApi =>
-    ({
+): CustomDataFeedType => {
+    let currentUserAddress = '';
+    const updateUserAddress = (newAddress: string) => {
+        currentUserAddress = newAddress;
+    };
+    const datafeed: IDatafeedChartApi & {
+        updateUserAddress: (address: string) => void;
+    } = {
         searchSymbols: (userInput: string, exchange, symbolType, onResult) => {
             onResult([]);
         },
@@ -140,8 +151,10 @@ export const createDataFeed = (
 
             const markRes = (await getMarkFillData(
                 symbolInfo.name,
-                // debugWallet.address,
+                currentUserAddress,
             )) as any;
+
+            if (!markRes) return;
 
             const fillHistory = markRes.dataCache;
             const userWallet = markRes.user;
@@ -252,4 +265,9 @@ export const createDataFeed = (
                 );
             }
         },
-    }) as IDatafeedChartApi;
+
+        updateUserAddress,
+    } as CustomDataFeedType;
+
+    return datafeed as CustomDataFeedType;
+};

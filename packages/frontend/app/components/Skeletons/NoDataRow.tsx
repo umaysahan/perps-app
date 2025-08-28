@@ -6,7 +6,7 @@ interface NoDataRowProps {
     text?: string;
 }
 
-const NoDataRow: React.FC<NoDataRowProps> = ({ text = 'No data found' }) => {
+const NoDataRow: React.FC<NoDataRowProps> = ({ text = 'Data unavailable' }) => {
     return (
         <>
             <div className={styles.noDataWrapper}>

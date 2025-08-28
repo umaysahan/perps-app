@@ -1,10 +1,14 @@
 import { useMemo, useRef } from 'react';
 import GenericTable from '~/components/Tables/GenericTable/GenericTable';
 import { useModal } from '~/hooks/useModal';
-import { useDebugStore } from '~/stores/DebugStore';
+import { useUnifiedMarginData } from '~/hooks/useUnifiedMarginData';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
 import type { TableSortDirection } from '~/utils/CommonIFs';
-import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
+import {
+    EXTERNAL_PAGE_URL_PREFIX,
+    MIN_POSITION_USD_SIZE,
+} from '~/utils/Constants';
 import type { PositionDataSortBy, PositionIF } from '~/utils/UserDataIFs';
 import { sortPositionData } from '~/utils/position/PositionUtils';
 import PositionsTableHeader from './PositionsTableHeader';
@@ -18,35 +22,48 @@ interface PositionsTableProps {
 
 export default function PositionsTable(props: PositionsTableProps) {
     const { pageMode, isFetched, selectedFilter } = props;
-    const { coinPriceMap, positions, symbol } = useTradeDataStore();
+    const { coinPriceMap, symbol, symbolInfo } = useTradeDataStore();
+    const { positions } = useUnifiedMarginData();
     const appSettingsModal = useModal('closed');
 
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
 
     const currentUserRef = useRef<string>('');
-    currentUserRef.current = debugWallet.address;
+    currentUserRef.current = userAddress;
 
     const viewAllLink = `${EXTERNAL_PAGE_URL_PREFIX}/positions`;
 
-    const filteredData = useMemo(() => {
+    const dataFilteredBySize = useMemo(() => {
+        return positions.filter(
+            (position) =>
+                Math.abs(position.szi) *
+                    (symbolInfo?.markPx || position.entryPx) >
+                MIN_POSITION_USD_SIZE,
+        );
+    }, [positions, symbolInfo]);
+
+    const dataFilteredByType = useMemo(() => {
         switch (selectedFilter) {
             case 'all':
-                return positions;
+                return dataFilteredBySize;
             case 'active':
-                return positions.filter((fill) => fill.coin === symbol);
+                return dataFilteredBySize.filter(
+                    (fill) => fill.coin === symbol,
+                );
             case 'long':
-                return positions.filter((fill) => fill.szi > 0);
+                return dataFilteredBySize.filter((fill) => fill.szi > 0);
             case 'short':
-                return positions.filter((fill) => fill.szi < 0);
+                return dataFilteredBySize.filter((fill) => fill.szi < 0);
         }
 
-        return positions;
-    }, [positions, selectedFilter]);
+        return dataFilteredBySize;
+    }, [selectedFilter, dataFilteredBySize]);
     return (
         <>
             <GenericTable
+                noDataMessage='No open positions'
                 storageKey={`PositionsTable_${currentUserRef.current}`}
-                data={filteredData as PositionIF[]}
+                data={dataFilteredByType as PositionIF[]}
                 renderHeader={(sortDirection, sortClickHandler, sortBy) => (
                     <>
                         <PositionsTableHeader

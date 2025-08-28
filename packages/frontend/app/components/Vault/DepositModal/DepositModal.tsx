@@ -1,11 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
-import styles from './DepositModal.module.css';
+import { useCallback, useMemo, useState } from 'react';
+import { LuChevronDown, LuCircleHelp } from 'react-icons/lu';
 import Tooltip from '~/components/Tooltip/Tooltip';
-import { AiOutlineQuestionCircle } from 'react-icons/ai';
-import { LuChevronDown } from 'react-icons/lu';
-import { useVaultManager } from '~/routes/vaults/useVaultManager';
 import { useDepositService } from '~/hooks/useDepositService';
+import useNumFormatter from '~/hooks/useNumFormatter';
+import { useVaultManager } from '~/routes/vaults/useVaultManager';
 import { useNotificationStore } from '~/stores/NotificationStore';
+import styles from './DepositModal.module.css';
 
 interface DepositModalProps {
     vault: {
@@ -46,6 +46,8 @@ export default function DepositModal({
         executeDeposit,
         isLoading: isDepositLoading,
     } = useDepositService();
+
+    const { formatNum } = useNumFormatter();
 
     // Use the unit from the vault or default to USD
     const unitValue = vault.unit || 'USD';
@@ -128,7 +130,7 @@ export default function DepositModal({
                 // Show success notification
                 notificationStore.add({
                     title: 'Deposit Successful',
-                    message: `Successfully deposited $${depositAmount.toFixed(2)} USD`,
+                    message: `Successfully deposited ${formatNum(depositAmount, 2, true, false)} fUSD`,
                     icon: 'check',
                 });
 
@@ -167,11 +169,6 @@ export default function DepositModal({
             value: formatCurrency(walletBalance?.decimalized || 0, unitValue),
             tooltip: 'Your current wallet balance',
         },
-        {
-            label: 'Network Fee',
-            value: 'Sponsored by Fogo',
-            tooltip: 'Transaction fees are sponsored by Fogo',
-        },
     ];
 
     // Check if amount is below minimum
@@ -179,7 +176,7 @@ export default function DepositModal({
         if (!amount) return false;
         const depositAmount = parseFloat(amount);
         const result =
-            !isNaN(depositAmount) && depositAmount > 0 && depositAmount < 10;
+            !isNaN(depositAmount) && depositAmount > 0 && depositAmount < 5;
         console.log(
             'isBelowMinimum check - amount:',
             amount,
@@ -309,7 +306,7 @@ export default function DepositModal({
                                     content={info?.tooltip}
                                     position='right'
                                 >
-                                    <AiOutlineQuestionCircle size={13} />
+                                    <LuCircleHelp size={12} />
                                 </Tooltip>
                             )}
                         </div>
@@ -322,7 +319,7 @@ export default function DepositModal({
                 onClick={(e) => {
                     if (isBelowMinimum) {
                         e.preventDefault();
-                        setError('Minimum deposit amount is $10.00');
+                        setError('Minimum deposit amount is $5.00');
                         // Clear error after 3 seconds
                         setTimeout(() => setError(null), 3000);
                         return;

@@ -58,8 +58,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
 }) => {
     const { info } = useSdk();
 
-    // TODO : will uncomment this when limit order type has been activated
-    const orderClickDisabled = true;
+    const orderClickDisabled = false;
 
     const orderRowHeight = useMemo(() => {
         const dummyOrderRow = document.getElementById('dummyOrderRow');

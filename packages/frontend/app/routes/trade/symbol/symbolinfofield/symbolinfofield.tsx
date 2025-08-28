@@ -4,7 +4,8 @@ import styles from './symbolinfofield.module.css';
 import { motion } from 'framer-motion';
 import SkeletonNode from '~/components/Skeletons/SkeletonNode/SkeletonNode';
 import Tooltip from '~/components/Tooltip/Tooltip';
-import { AiOutlineQuestionCircle } from 'react-icons/ai';
+import { LuCircleHelp } from 'react-icons/lu';
+import type { ReactNode } from 'react';
 
 interface SymbolInfoFieldProps {
     label: string;
@@ -13,7 +14,7 @@ interface SymbolInfoFieldProps {
     type?: 'positive' | 'negative';
     valueClass?: string;
     skeleton?: boolean;
-    tooltipContent?: string;
+    tooltipContent?: ReactNode;
 }
 
 const SymbolInfoField: React.FC<SymbolInfoFieldProps> = ({
@@ -79,19 +80,19 @@ const SymbolInfoField: React.FC<SymbolInfoFieldProps> = ({
 
     return (
         <div className={styles.symbolInfoFieldWrapper}>
-            <div className={`${styles.symbolInfoField}`}>
-                <div className={styles.symbolInfoFieldLabel}>
-                    {label}
-                    {tooltipContent && (
-                        <div className={styles.tooltip}>
-                            <Tooltip content={tooltipContent} position='right'>
-                                <AiOutlineQuestionCircle size={13} />
-                            </Tooltip>
-                        </div>
-                    )}
+            <Tooltip content={tooltipContent} position='bottom'>
+                <div className={`${styles.symbolInfoField}`}>
+                    <div className={styles.symbolInfoFieldLabel}>
+                        {label}
+                        {tooltipContent && (
+                            <div className={styles.tooltip}>
+                                <LuCircleHelp size={12} />
+                            </div>
+                        )}
+                    </div>
+                    {renderValue()}
                 </div>
-                {renderValue()}
-            </div>
+            </Tooltip>
         </div>
     );
 };

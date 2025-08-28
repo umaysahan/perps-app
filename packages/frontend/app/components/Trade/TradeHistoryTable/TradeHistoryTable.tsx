@@ -1,15 +1,15 @@
 import { useMemo, useRef } from 'react';
 import GenericTable from '~/components/Tables/GenericTable/GenericTable';
+import { useInfoApi } from '~/hooks/useInfoApi';
 import { sortUserFills } from '~/processors/processUserFills';
-import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
+import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
 import type { UserFillIF, UserFillSortBy } from '~/utils/UserDataIFs';
 import TradeHistoryTableHeader, {
     TradeHistoryTableModel,
 } from './TradeHistoryTableHeader';
 import TradeHistoryTableRow from './TradeHistoryTableRow';
-import { useInfoApi } from '~/hooks/useInfoApi';
-import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
 interface TradeHistoryTableProps {
     data: UserFillIF[];
     isFetched: boolean;
@@ -27,10 +27,10 @@ export default function TradeHistoryTable(props: TradeHistoryTableProps) {
 
     const { fetchUserFills } = useInfoApi();
 
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
 
     const currentUserRef = useRef<string>('');
-    currentUserRef.current = debugWallet.address;
+    currentUserRef.current = userAddress;
 
     const handleViewOrderDetails = (time: string, coin: string) => {
         if (onViewOrderDetails) {
@@ -54,8 +54,8 @@ export default function TradeHistoryTable(props: TradeHistoryTableProps) {
     }, [data, selectedFilter]);
 
     const viewAllLink = useMemo(() => {
-        return `${EXTERNAL_PAGE_URL_PREFIX}/tradeHistory/${debugWallet.address}`;
-    }, [debugWallet.address]);
+        return `${EXTERNAL_PAGE_URL_PREFIX}/tradeHistory/${userAddress}`;
+    }, [userAddress]);
 
     return (
         <>
@@ -92,8 +92,9 @@ export default function TradeHistoryTable(props: TradeHistoryTableProps) {
                 defaultSortBy={'time'}
                 defaultSortDirection={'desc'}
                 tableModel={TradeHistoryTableModel}
+                noDataMessage='No trade history'
                 csvDataFetcher={fetchUserFills}
-                csvDataFetcherArgs={[debugWallet.address, true]}
+                csvDataFetcherArgs={[userAddress, true]}
             />
         </>
     );

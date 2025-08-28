@@ -1,7 +1,9 @@
 import { useMemo, useRef } from 'react';
 import GenericTable from '~/components/Tables/GenericTable/GenericTable';
-import { useDebugStore } from '~/stores/DebugStore';
+import { useInfoApi } from '~/hooks/useInfoApi';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
+import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
 import type {
     OrderDataIF,
     OrderDataSortBy,
@@ -11,8 +13,6 @@ import OrderHistoryTableHeader, {
     OrderHistoryTableModel,
 } from './OrderHistoryTableHeader';
 import OrderHistoryTableRow from './OrderHistoryTableRow';
-import { useInfoApi } from '~/hooks/useInfoApi';
-import { EXTERNAL_PAGE_URL_PREFIX } from '~/utils/Constants';
 
 interface OrderHistoryTableProps {
     selectedFilter?: string;
@@ -28,18 +28,18 @@ export default function OrderHistoryTable(props: OrderHistoryTableProps) {
 
     const { fetchOrderHistory } = useInfoApi();
 
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
 
     const currentUserRef = useRef<string>('');
-    currentUserRef.current = debugWallet.address;
+    currentUserRef.current = userAddress;
 
     const filteredOrderHistory = useMemo(() => {
         return filterOrderHistory(data, selectedFilter);
     }, [data, selectedFilter, symbol]);
 
     const viewAllLink = useMemo(() => {
-        return `${EXTERNAL_PAGE_URL_PREFIX}/orderHistory/${debugWallet.address}`;
-    }, [debugWallet.address]);
+        return `${EXTERNAL_PAGE_URL_PREFIX}/orderHistory/${userAddress}`;
+    }, [userAddress]);
 
     return (
         <>
@@ -72,8 +72,9 @@ export default function OrderHistoryTable(props: OrderHistoryTableProps) {
                 defaultSortBy={'timestamp'}
                 defaultSortDirection={'desc'}
                 tableModel={OrderHistoryTableModel}
+                noDataMessage='No order history'
                 csvDataFetcher={fetchOrderHistory}
-                csvDataFetcherArgs={[debugWallet.address]}
+                csvDataFetcherArgs={[userAddress]}
             />
         </>
     );

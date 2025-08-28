@@ -14,11 +14,17 @@ export interface notificationIF {
     // unique ID for the tx used to generate the card, used for
     // ... updating and removing cards
     slug: number;
+    // time in ms to wait before removing the notification
+    removeAfter?: number;
+    // link to explorer
+    txLink?: string;
 }
 
 // type to allow new notification creation without manual fingerprinting
 type notificatioSlugOptionalT = Omit<notificationIF, 'slug'> & {
     slug?: number;
+    removeAfter?: number;
+    txLink?: string;
 };
 
 // fn to make an skug to ID each notifcation

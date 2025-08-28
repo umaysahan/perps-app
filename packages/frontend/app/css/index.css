@@ -251,6 +251,14 @@ svg {
     max-width: 100%;
 }
 
+svg {
+    shape-rendering: crispEdges;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
 input,
 button,
 textarea,

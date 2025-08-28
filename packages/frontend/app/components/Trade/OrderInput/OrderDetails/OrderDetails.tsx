@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import React, { useMemo } from 'react';
-import { AiOutlineQuestionCircle } from 'react-icons/ai';
 import { HiOutlineChevronDoubleDown } from 'react-icons/hi2';
+import { LuCircleHelp } from 'react-icons/lu';
 import Tooltip from '~/components/Tooltip/Tooltip';
 import useNumFormatter from '~/hooks/useNumFormatter';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
@@ -17,12 +17,14 @@ interface OrderDetailsProps {
     orderMarketPrice: string;
     usdOrderValue?: number;
     marginRequired: number;
+    liquidationPrice?: number | null;
 }
 
 const OrderDetails: React.FC<OrderDetailsProps> = ({
     orderMarketPrice,
     usdOrderValue,
     marginRequired,
+    liquidationPrice,
 }) => {
     const { formatNum } = useNumFormatter();
     const { isTradeInfoExpanded, setIsTradeInfoExpanded } = useTradeDataStore();
@@ -40,7 +42,31 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
             showLiquidationPrice && {
                 label: 'Liquidation Price',
                 tooltipLabel: 'liquidation price',
-                value: '-',
+                value: (() => {
+                    if (
+                        liquidationPrice === null ||
+                        liquidationPrice === undefined
+                    ) {
+                        return '-';
+                    }
+
+                    const humanReadablePrice = liquidationPrice / 1e6; // Convert from 10^8 to human readable
+
+                    // Display '-' if price is below 0 or above 100 million
+                    if (
+                        humanReadablePrice <= 0 ||
+                        humanReadablePrice > 100_000_000
+                    ) {
+                        return '-';
+                    }
+
+                    return formatNum(
+                        humanReadablePrice,
+                        humanReadablePrice > 10_000 ? 0 : 2,
+                        true,
+                        true,
+                    );
+                })(),
             },
             orderMarketPrice === 'scale' && {
                 label: 'Avg. Entry Price',
@@ -52,14 +78,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
                 tooltipLabel: 'order value',
                 value: usdOrderValue
                     ? formatNum(usdOrderValue, null, true, true)
-                    : 'N/A',
+                    : '-',
             },
             {
                 label: 'Margin Required',
                 tooltipLabel: 'margin required',
                 value: marginRequired
                     ? formatNum(marginRequired, null, true, true)
-                    : 'N/A',
+                    : '-',
             },
         ];
         return arr.filter(Boolean) as MarketInfoItem[];
@@ -69,6 +95,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
         usdOrderValue,
         marginRequired,
         formatNum,
+        liquidationPrice,
     ]);
 
     const twapInfoData: MarketInfoItem[] = useMemo(
@@ -163,7 +190,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
                                         content={data.tooltipLabel}
                                         position='right'
                                     >
-                                        <AiOutlineQuestionCircle size={13} />
+                                        <LuCircleHelp size={12} />
                                     </Tooltip>
                                 </div>
                                 <span className={styles.detail_value}>

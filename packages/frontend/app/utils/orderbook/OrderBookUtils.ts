@@ -86,7 +86,7 @@ export const formatDiffAsCountdown = (diff: number) => {
 export const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleString(undefined, {
-        year: 'numeric',
+        year: '2-digit',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',

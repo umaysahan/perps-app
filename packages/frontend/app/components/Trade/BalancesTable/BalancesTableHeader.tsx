@@ -58,12 +58,6 @@ export default function BalancesTableHeader({
             className: styles.buyingPowerCell,
         },
         {
-            name: 'PNL (ROE%)',
-            key: 'pnlValue',
-            sortable: true,
-            className: styles.pnlCell,
-        },
-        {
             name: 'Contract',
             key: 'contract',
             sortable: false,

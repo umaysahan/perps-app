@@ -1,3 +1,4 @@
+import { externalURLs } from '~/utils/Constants';
 import styles from './more.module.css';
 import {
     FaTwitter,
@@ -16,14 +17,14 @@ const linksData = [
         title: 'Twitter',
         description: 'Follow the latest from Ambient Finance',
         linkText: '@ambient_finance',
-        link: 'https://twitter.com/ambient_finance',
+        link: externalURLs.twitter,
         icon: <FaTwitter />,
     },
     {
         title: 'Discord',
         description: 'Join in the discussion',
         linkText: 'discord.gg/ambient-finance',
-        link: 'https://discord.gg/ambient-finance',
+        link: externalURLs.discord,
         icon: <FaDiscord />,
     },
     {

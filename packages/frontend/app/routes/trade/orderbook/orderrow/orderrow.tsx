@@ -56,6 +56,28 @@ const OrderRow: React.FC<OrderRowProps> = ({
             price: order.px,
             type: order.type,
         });
+
+        // Use setTimeout to ensure the DOM has updated with the new trade slot
+        setTimeout(() => {
+            // Find the size input element
+            const sizeInput = document.getElementById(
+                'trade-module-size-input',
+            ) as HTMLInputElement;
+            // Find the submit button
+            const submitButton = document.querySelector(
+                '[data-testid="submit-order-button"]',
+            ) as HTMLButtonElement;
+
+            if (sizeInput && submitButton) {
+                if (!sizeInput.value) {
+                    // If size input is empty, focus it
+                    sizeInput.focus();
+                } else {
+                    // Otherwise, focus the submit button
+                    submitButton.focus();
+                }
+            }
+        }, 0);
     };
     return (
         <div

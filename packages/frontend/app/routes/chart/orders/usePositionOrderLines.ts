@@ -1,9 +1,11 @@
+import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTradingView } from '~/contexts/TradingviewContext';
-import { useTradeDataStore } from '~/stores/TradeDataStore';
-import { type LineLabel } from './customOrderLineUtils';
-import type { LineData } from './component/LineComponent';
 import { useAppSettings } from '~/stores/AppSettingsStore';
+import { useTradeDataStore } from '~/stores/TradeDataStore';
+import { MIN_POSITION_USD_SIZE } from '~/utils/Constants';
+import type { LineData } from './component/LineComponent';
+import { type LineLabel } from './customOrderLineUtils';
 import { LIQ_PRICE_LINE_COLOR } from './orderLineUtils';
 
 export const usePositionOrderLines = (): LineData[] => {
@@ -11,11 +13,15 @@ export const usePositionOrderLines = (): LineData[] => {
     const { positions, symbol } = useTradeDataStore();
     const { bsColor, getBsColor } = useAppSettings();
 
+    const sessionState = useSession();
+    const isSessionEstablished = isEstablished(sessionState);
+
     const [lines, setLines] = useState<LineData[]>([]);
 
     const filteredPositions = useMemo(() => {
         return positions
             .filter((i) => i.coin === symbol)
+            .filter((i) => Math.abs(i.szi) * i.entryPx > MIN_POSITION_USD_SIZE)
             .map((i) => ({
                 price: i.entryPx,
                 pnl: i.unrealizedPnl,
@@ -25,7 +31,7 @@ export const usePositionOrderLines = (): LineData[] => {
     }, [JSON.stringify(positions), symbol]);
 
     useEffect(() => {
-        if (!chart || !positions?.length) {
+        if (!isSessionEstablished || !chart || !positions?.length) {
             setLines([]);
             return;
         }
@@ -67,7 +73,13 @@ export const usePositionOrderLines = (): LineData[] => {
         });
 
         setLines(newLines);
-    }, [chart, JSON.stringify(filteredPositions), symbol, bsColor]);
+    }, [
+        isSessionEstablished,
+        chart,
+        JSON.stringify(filteredPositions),
+        symbol,
+        bsColor,
+    ]);
 
     return lines;
 };

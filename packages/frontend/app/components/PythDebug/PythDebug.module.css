@@ -1,0 +1,96 @@
+.pythDebug {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--dark2);
+    border: 1px solid var(--dark4);
+    border-radius: 8px;
+    padding: 12px;
+    z-index: 1000;
+    min-width: 300px;
+    max-width: 400px;
+    font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--dark4);
+}
+
+.header h4 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text1);
+}
+
+.status {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.connected {
+    color: var(--positive);
+}
+
+.disconnected {
+    color: var(--negative);
+}
+
+.priceList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.priceItem {
+    display: grid;
+    grid-template-columns: 60px 1fr 80px 60px;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--dark3);
+}
+
+.priceItem:last-child {
+    border-bottom: none;
+}
+
+.symbol {
+    font-weight: 600;
+    color: var(--text1);
+}
+
+.price {
+    text-align: right;
+    color: var(--text1);
+    font-family: 'Roboto Mono', monospace;
+}
+
+.confidence {
+    text-align: right;
+    color: var(--text2);
+    font-size: 11px;
+    font-family: 'Roboto Mono', monospace;
+}
+
+.age {
+    text-align: right;
+    color: var(--text3);
+    font-size: 11px;
+}
+
+.stale {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.noData {
+    text-align: center;
+    color: var(--text3);
+    padding: 20px 0;
+}

@@ -1,4 +1,4 @@
-import type { MarginBucketInfo } from '@crocswap-libs/ambient-ember';
+import type { MarginBucketAvail } from '@crocswap-libs/ambient-ember';
 import {
     isEstablished,
     SessionButton,
@@ -15,14 +15,17 @@ import React, {
 import SimpleButton from '~/components/SimpleButton/SimpleButton';
 import Tooltip from '~/components/Tooltip/Tooltip';
 import useNumFormatter from '~/hooks/useNumFormatter';
-import { usePortfolioModals } from '~/routes/portfolio/usePortfolioModals';
 import { useAppSettings } from '~/stores/AppSettingsStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
+import { MIN_POSITION_USD_SIZE } from '~/utils/Constants';
 import styles from './DepositDropdown.module.css';
 
 interface propsIF {
-    marginBucket: MarginBucketInfo | null;
+    marginBucket: MarginBucketAvail | null;
     isDropdown?: boolean;
+    openDepositModal: () => void;
+    openWithdrawModal: () => void;
+    PortfolioModalsRenderer: React.ReactNode;
 }
 
 const tooltipSvg = (
@@ -50,53 +53,46 @@ const tooltipSvg = (
 );
 
 function DepositDropdown(props: propsIF) {
-    const { isDropdown, marginBucket } = props;
+    const {
+        isDropdown,
+        marginBucket,
+        openDepositModal,
+        openWithdrawModal,
+        PortfolioModalsRenderer,
+    } = props;
 
     const [balanceNum, setBalanceNum] = useState<number>(0);
     const [unrealizedPnlNum, setUnrealizedPnlNum] = useState<number>(0);
 
     useEffect(() => {
         if (marginBucket) {
-            const equityBigNum = marginBucket.calculations.equity;
+            const equityBigNum = marginBucket.equity;
             const normalizedEquity = Number(equityBigNum) / 1e6;
             setBalanceNum(normalizedEquity);
-            const unrealizedPnlBigNum = marginBucket.calculations.unrealizedPnl;
+            const unrealizedPnlBigNum = marginBucket.unrealizedPnl;
             const normalizedUnrealizedPnl = Number(unrealizedPnlBigNum) / 1e6;
             setUnrealizedPnlNum(normalizedUnrealizedPnl);
         }
     }, [marginBucket]);
 
+    const sessionButtonRef = useRef<HTMLSpanElement>(null);
     const sessionState = useSession();
     const isUserConnected = isEstablished(sessionState);
 
-    // Debug SessionState
     useEffect(() => {
-        console.log(
-            '🔍 [DepositDropdown] Full SessionState object:',
-            sessionState,
-        );
-        console.log('🔍 [DepositDropdown] SessionState exploration:', {
-            isEstablished: isEstablished(sessionState),
-            hasSession: !!sessionState,
-            sessionKeys: Object.keys(sessionState || {}),
-            sessionDetails: sessionState
-                ? Object.entries(sessionState).map(([key, value]) => ({
-                      key,
-                      type: typeof value,
-                      isFunction: typeof value === 'function',
-                      value:
-                          typeof value === 'function'
-                              ? 'function'
-                              : value?.toString
-                                ? value.toString().substring(0, 100)
-                                : JSON.stringify(value),
-                  }))
-                : 'No session state',
-        });
-    }, [sessionState]);
+        const button = sessionButtonRef.current;
+        if (button) {
+            const handleClick = () => {
+                localStorage.setItem(
+                    'loginButtonClickTime',
+                    Date.now().toString(),
+                );
+            };
+            button.addEventListener('click', handleClick);
+            return () => button.removeEventListener('click', handleClick);
+        }
+    }, []);
 
-    const { openDepositModal, openWithdrawModal, PortfolioModalsRenderer } =
-        usePortfolioModals();
     const {
         //   accountOverview,
         selectedCurrency,
@@ -132,25 +128,35 @@ function DepositDropdown(props: propsIF) {
     // Memoize color values
     const bsColor = useMemo(() => getBsColor(), [getBsColor]);
 
+    const unrealizedPnlLessThanMinPositionSize =
+        Math.abs(unrealizedPnlNum) < MIN_POSITION_USD_SIZE;
+
+    const balanceLessThanMinPositionSize =
+        Math.abs(balanceNum) < MIN_POSITION_USD_SIZE;
+
     // Memoize overview data
     const overviewData = useMemo(
         () => [
             {
                 label: 'Balance',
                 tooltipContent: 'total account equity',
-                value: formatNum(balanceNum, 2, true, true),
+                value: balanceLessThanMinPositionSize
+                    ? formatNum(0, 2, true, true)
+                    : formatNum(balanceNum, 2, true, true),
                 change: 0,
             },
             {
                 label: 'Unrealized PNL',
                 tooltipContent: 'Unrealized profits and losses',
-                value: formatNum(unrealizedPnlNum, 2, true, true),
+                value: unrealizedPnlLessThanMinPositionSize
+                    ? formatNum(0, 2, true, true)
+                    : formatNum(unrealizedPnlNum, 2, true, true),
                 color:
-                    unrealizedPnlNum > 0
-                        ? bsColor.buy
-                        : unrealizedPnlNum < 0
-                          ? bsColor.sell
-                          : 'var(--text-)',
+                    !unrealizedPnlNum || unrealizedPnlLessThanMinPositionSize
+                        ? 'var(--text-)'
+                        : unrealizedPnlNum > 0
+                          ? bsColor.buy
+                          : bsColor.sell,
             },
             // {
             //     label: 'Cross Margin Ratio',
@@ -226,7 +232,12 @@ function DepositDropdown(props: propsIF) {
                         <p className={styles.notConnectedText}>
                             Connect your wallet to start trading with zero gas.
                         </p>
-                        <SessionButton />
+                        <span
+                            className={`plausible-event-name=Login+Button+Click plausible-event-location=Account+Overview`}
+                            ref={sessionButtonRef}
+                        >
+                            <SessionButton />
+                        </span>
                     </div>
                 )}
                 {isUserConnected && (

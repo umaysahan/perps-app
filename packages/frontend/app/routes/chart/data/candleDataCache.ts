@@ -120,11 +120,13 @@ export async function getMarkFillData(coin: string, user?: string) {
                 };
 
                 dataCacheWithUser.set(cacheKey, fetchedDataWithUser);
+
+                return fetchedDataWithUser;
             }
         });
+    } else {
+        return [];
     }
-
-    return [];
 }
 
 export function updateMarkDataWithSubscription(

@@ -1,4 +1,5 @@
 .symbolInfoContainer {
+    --funding-rate-tooltip-width: 300px;
     width: 100%;
     font-size: 0.8rem;
     display: flex;
@@ -17,12 +18,35 @@
     display: grid;
     grid-template-columns: repeat(7, auto) !important;
     gap: var(--gap-m);
-    margin-left: var(--margin-l);
+    padding-inline-start: var(--margin-l);
     border-radius: 0 !important;
+}
+.fundingTooltipContent {
+    width: var(--funding-rate-tooltip-width);
+    text-wrap: wrap;
+    word-wrap: break-word;
+    text-align: start;
 }
 
 @media only screen and (max-width: 768px) {
     .symbolSelector {
         margin-left: 0 !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .symbolInfoContainer {
+        display: flex;
+        align-items: center;
+    }
+
+    .symbolInfoContainer > :first-child {
+        flex: 0 0 auto;
+    }
+
+    .symbolInfoContainer > :nth-child(2) {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
     }
 }

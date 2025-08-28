@@ -95,7 +95,7 @@ export const useOpenOrderLines = (): LineData[] => {
                     if (triggerPx) {
                         yPrice = triggerPx;
                     }
-                    quantityTextValue = sz ?? pnlSzi ?? 0;
+                    quantityTextValue = sz || pnlSzi || 0;
                 }
 
                 return {
@@ -108,6 +108,7 @@ export const useOpenOrderLines = (): LineData[] => {
                     oid,
                     lineStyle: 3,
                     lineWidth: 1,
+                    side: side,
                 };
             });
 

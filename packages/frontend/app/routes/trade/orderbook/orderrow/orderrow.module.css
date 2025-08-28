@@ -53,8 +53,7 @@
 .orderRowTotal {
     flex: 1 1;
     z-index: 2;
-    /* TODO : will uncomment this when limit order type has been activated */
-    /* cursor: pointer; */
+    cursor: pointer;
     user-select: none;
 }
 

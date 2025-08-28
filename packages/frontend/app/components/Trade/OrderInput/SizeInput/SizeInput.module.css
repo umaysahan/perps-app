@@ -14,13 +14,16 @@
     grid-template-columns: auto 1fr 50px;
     gap: var(--gap-xs);
 }
+.modalContainer {
+    border: 1px solid var(--bg-dark4);
+}
 .sizeInputContainer input {
     background-color: transparent;
     outline: none;
     border: none;
     text-align: right;
     color: var(--text1);
-    cursor: pointer;
+    cursor: text;
 }
 .tokenButton {
     background-color: transparent;
@@ -32,6 +35,7 @@
     flex-direction: row;
     align-items: center;
     gap: var(--gap-s);
+    z-index: 5;
 }
 .tokenButton svg {
     fill: var(--text2);

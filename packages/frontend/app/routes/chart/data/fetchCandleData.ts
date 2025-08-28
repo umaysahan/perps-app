@@ -1,4 +1,4 @@
-const hyperLiquidURL = 'https://api.hyperliquid.xyz/info';
+import { MARKET_INFO_ENDPOINT } from '~/utils/Constants';
 
 export const fetchCandles = async (
     coin: string,
@@ -19,7 +19,7 @@ export const fetchCandles = async (
     };
 
     try {
-        const response = await fetch(hyperLiquidURL, {
+        const response = await fetch(MARKET_INFO_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
@@ -45,7 +45,7 @@ export const fetchUserFillsHistory = async (user: string) => {
     };
 
     try {
-        const response = await fetch(hyperLiquidURL, {
+        const response = await fetch(MARKET_INFO_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),

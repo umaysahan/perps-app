@@ -3,19 +3,21 @@ import {
     SessionButton,
     useSession,
 } from '@fogo/sessions-sdk-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 // import { AiOutlineQuestionCircle } from 'react-icons/ai';
-import {
-    DFLT_EMBER_MARKET,
-    getUserMarginBucket,
-    USD_MINT,
-} from '@crocswap-libs/ambient-ember';
+// import {
+//     DFLT_EMBER_MARKET,
+//     getUserMarginBucket,
+//     USD_MINT,
+// } from '@crocswap-libs/ambient-ember';
 import { LuChevronDown, LuChevronUp, LuSettings } from 'react-icons/lu';
 import { MdOutlineClose, MdOutlineMoreHoriz } from 'react-icons/md';
 import { Link, useLocation } from 'react-router';
 import { useKeydown } from '~/hooks/useKeydown';
+import { useShortScreen } from '~/hooks/useMediaQuery';
 import { useModal } from '~/hooks/useModal';
 import useOutsideClick from '~/hooks/useOutsideClick';
+import { useUnifiedMarginData } from '~/hooks/useUnifiedMarginData';
 import { usePortfolioModals } from '~/routes/portfolio/usePortfolioModals';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import AppOptions from '../AppOptions/AppOptions';
@@ -26,11 +28,33 @@ import HelpDropdown from './HelpDropdown/HelpDropdown';
 import MoreDropdown from './MoreDropdown/MoreDropdown';
 import styles from './PageHeader.module.css';
 import RpcDropdown from './RpcDropdown/RpcDropdown';
+// import WalletDropdown from './WalletDropdown/WalletDropdown';
+import { getDurationSegment } from '~/utils/functions/getDurationSegment';
+import DepositDropdown from './DepositDropdown/DepositDropdown';
 
 export default function PageHeader() {
     const sessionState = useSession();
 
     const isUserConnected = isEstablished(sessionState);
+
+    const sessionButtonRef = useRef<HTMLSpanElement>(null);
+
+    useEffect(() => {
+        const button = sessionButtonRef.current;
+        if (button) {
+            const handleClick = () => {
+                if (!isUserConnected) {
+                    localStorage.setItem(
+                        'loginButtonClickTime',
+                        Date.now().toString(),
+                    );
+                }
+            };
+
+            button.addEventListener('click', handleClick);
+            return () => button.removeEventListener('click', handleClick);
+        }
+    }, [isUserConnected]);
 
     // state values to track whether a given menu is open
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -44,7 +68,19 @@ export default function PageHeader() {
     const location = useLocation();
 
     // symbol for active market
-    const { symbol, setMarginBucket } = useTradeDataStore();
+    const { symbol } = useTradeDataStore();
+
+    // Use unified margin data
+    const { marginBucket } = useUnifiedMarginData();
+
+    const landingTime = useRef<number>(Date.now());
+
+    // useEffect(() => {
+    //     // track initial site landing
+    //     if (typeof plausible === 'function') {
+    //         plausible('Landing');
+    //     }
+    // }, []);
 
     // data to generate nav links in page header
     const navLinks = [
@@ -100,44 +136,48 @@ export default function PageHeader() {
         [],
     );
 
-    const { openDepositModal, PortfolioModalsRenderer } = usePortfolioModals();
+    const isShortScreen: boolean = useShortScreen();
+
+    const { openDepositModal, openWithdrawModal, PortfolioModalsRenderer } =
+        usePortfolioModals();
+
+    // Holds previous user connection status
+    const prevIsUserConnected = useRef(isUserConnected);
 
     useEffect(() => {
-        let intervalId: NodeJS.Timeout;
-
-        const fetchMarginBucket = async () => {
-            if (isEstablished(sessionState)) {
-                const marginBucket = await getUserMarginBucket(
-                    sessionState.connection,
-                    // new PublicKey(
-                    //     'EBuzZzbTgcbjRz2TBygGgf2T7nmqzSjQG5vGmEiCvUzu',
-                    // ),
-                    sessionState.walletPublicKey,
-                    BigInt(DFLT_EMBER_MARKET.mktId),
-                    USD_MINT,
-                    {},
+        if (prevIsUserConnected.current === false && isUserConnected === true) {
+            if (typeof plausible === 'function') {
+                const loginButtonClickTime = Number(
+                    localStorage.getItem('loginButtonClickTime'),
                 );
-                // console.log({ marginBucket });
-                setMarginBucket(marginBucket);
-            } else {
-                setMarginBucket(null);
+                plausible('Session Established', {
+                    props: {
+                        loginTime: loginButtonClickTime
+                            ? getDurationSegment(
+                                  loginButtonClickTime,
+                                  Date.now(),
+                              )
+                            : 'no login button clicked',
+                        loginRefreshTime: !loginButtonClickTime
+                            ? getDurationSegment(
+                                  landingTime.current,
+                                  Date.now(),
+                              )
+                            : 'not refreshed',
+                    },
+                });
             }
-        };
-
-        fetchMarginBucket(); // Initial fetch on mount
-
-        if (isEstablished(sessionState)) {
-            intervalId = setInterval(() => {
-                fetchMarginBucket();
-            }, 2000); // Refresh every 2 seconds
+            localStorage.removeItem('loginButtonClickTime');
+        } else if (
+            prevIsUserConnected.current === true &&
+            isUserConnected === false
+        ) {
+            if (typeof plausible === 'function') {
+                plausible('Session Ended');
+            }
         }
-
-        return () => {
-            if (intervalId) {
-                clearInterval(intervalId);
-            }
-        };
-    }, [sessionState]);
+        prevIsUserConnected.current = isUserConnected;
+    }, [isUserConnected]);
 
     return (
         <>
@@ -226,10 +266,29 @@ export default function PageHeader() {
                         >
                             <button
                                 className={styles.depositButton}
-                                onClick={() => openDepositModal()}
+                                onClick={() => {
+                                    if (isShortScreen) {
+                                        setIsDepositDropdownOpen(
+                                            !isDepositDropdownOpen,
+                                        );
+                                    } else {
+                                        openDepositModal();
+                                    }
+                                }}
                             >
-                                Deposit
+                                {isShortScreen ? 'Transfer' : 'Deposit'}
                             </button>
+                            {isDepositDropdownOpen && (
+                                <DepositDropdown
+                                    isDropdown
+                                    marginBucket={marginBucket}
+                                    openDepositModal={openDepositModal}
+                                    openWithdrawModal={openWithdrawModal}
+                                    PortfolioModalsRenderer={
+                                        PortfolioModalsRenderer
+                                    }
+                                />
+                            )}
                         </section>
                     )}
 
@@ -268,7 +327,13 @@ export default function PageHeader() {
                             )}
                         </section>
                     )}
-                    <SessionButton />
+                    <span
+                        className={`${!isUserConnected ? 'plausible-event-name=Login+Button+Click plausible-event-location=Page+Header' : ''}`}
+                        ref={sessionButtonRef}
+                    >
+                        <SessionButton />
+                    </span>
+
                     {isUserConnected && (
                         <section
                             style={{ position: 'relative' }}
@@ -307,7 +372,7 @@ export default function PageHeader() {
                                 setIsHelpDropdownOpen(!isHelpDropdownOpen)
                             }
                         >
-                            <AiOutlineQuestionCircle
+                            <LuCircleHelp
                                 size={18}
                                 color='var(--text2)'
                             />

@@ -154,9 +154,6 @@
     /* Prevent iOS zoom on focus */
     font-size: 16px !important;
 
-    /* Ensure padding for touch targets */
-    padding: 12px !important;
-
     /* Improve appearance when focused */
     outline: none;
 }

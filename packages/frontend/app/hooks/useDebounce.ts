@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * A custom hook that debounces a value.
@@ -32,6 +32,7 @@ export function useDebounce<T>(value: T, delay: number): T {
  * @param delay The delay in milliseconds
  * @returns The debounced function
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useDebouncedCallback<T extends (...args: any[]) => any>(
     callback: T,
     delay: number,

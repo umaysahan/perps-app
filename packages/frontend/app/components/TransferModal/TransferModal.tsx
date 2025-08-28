@@ -1,13 +1,13 @@
-import styles from './TransferModal.module.css';
-import Modal from '../Modal/Modal';
-import TransferDropdown from './TransferDropdown';
 import { useMemo, useState } from 'react';
-import SimpleButton from '../SimpleButton/SimpleButton';
 import {
     useAccounts,
     type accountIF,
     type useAccountsIF,
 } from '~/stores/AccountsStore';
+import Modal from '../Modal/Modal';
+import SimpleButton from '../SimpleButton/SimpleButton';
+import TransferDropdown from './TransferDropdown';
+import styles from './TransferModal.module.css';
 
 interface propsIF {
     closeModal: () => void;
@@ -81,10 +81,6 @@ export default function TransferModal(props: propsIF) {
                     <div>
                         <p>Available to Deposit</p>
                         <p>1,000.00</p>
-                    </div>
-                    <div>
-                        <p>Network Fee</p>
-                        <p>$0.001</p>
                     </div>
                 </div>
                 <SimpleButton

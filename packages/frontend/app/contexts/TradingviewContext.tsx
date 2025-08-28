@@ -9,7 +9,10 @@ import React, {
 import { useParams } from 'react-router';
 import { useSdk } from '~/hooks/useSdk';
 import { getMarkFillData } from '~/routes/chart/data/candleDataCache';
-import { createDataFeed } from '~/routes/chart/data/customDataFeed';
+import {
+    createDataFeed,
+    type CustomDataFeedType,
+} from '~/routes/chart/data/customDataFeed';
 import {
     drawingEvent,
     drawingEventUnsubscribe,
@@ -36,13 +39,12 @@ import {
 import { useAppOptions } from '~/stores/AppOptionsStore';
 import { useAppSettings, type colorSetIF } from '~/stores/AppSettingsStore';
 import { useAppStateStore } from '~/stores/AppStateStore';
-import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
 import {
     widget,
     type IBasicDataFeed,
     type IChartingLibraryWidget,
-    type IDatafeedChartApi,
     type ResolutionString,
     type TradingTerminalFeatureset,
 } from '~/tv/charting_library';
@@ -82,7 +84,7 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const [chartState, setChartState] = useState<ChartLayout | null>();
 
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
 
     const { showBuysSellsOnChart } = useAppOptions();
 
@@ -90,7 +92,7 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
         chartState?.interval,
     );
 
-    const dataFeedRef = useRef<IDatafeedChartApi | null>(null);
+    const dataFeedRef = useRef<CustomDataFeedType | null>(null);
 
     const { debugToolbarOpen, setDebugToolbarOpen } = useAppStateStore();
     const debugToolbarOpenRef = useRef(debugToolbarOpen);
@@ -135,18 +137,20 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
             });
 
             if (chart) {
-                const volumeStudyId = chart
+                const volumeStudies = chart
                     .activeChart()
                     .getAllStudies()
-                    .find((x) => x.name === 'Volume');
+                    .filter((x) => x.name === 'Volume');
 
-                if (volumeStudyId) {
-                    const volume = chart
-                        .activeChart()
-                        .getStudyById(volumeStudyId.id);
-                    volume.applyOverrides({
-                        'volume.color.0': c.buy,
-                        'volume.color.1': c.sell,
+                if (volumeStudies) {
+                    volumeStudies.forEach((item) => {
+                        const volume = chart
+                            .activeChart()
+                            .getStudyById(item.id);
+                        volume.applyOverrides({
+                            'volume.color.0': c.sell,
+                            'volume.color.1': c.buy,
+                        });
                     });
                 }
             }
@@ -189,6 +193,16 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
 
                 saveChartLayout(chart);
                 showBuysSellsOnChart && chart.chart().refreshMarks();
+            });
+
+            chart.subscribe('study_event', (studyId) => {
+                const studyElement = chart.activeChart().getStudyById(studyId);
+
+                const colors = getBsColor();
+                studyElement.applyOverrides({
+                    'volume.color.0': colors.sell,
+                    'volume.color.1': colors.buy,
+                });
             });
         }
     }, [chart]);
@@ -394,6 +408,13 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
             iframe?.contentDocument || iframe?.contentWindow?.document;
 
         const blockSymbolSearchKeys = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+
+            const isInInput = target && target.tagName === 'INPUT';
+            const isInTextArea = target && target.tagName === 'TEXTAREA';
+
+            if (isInInput || isInTextArea) return;
+
             const isSingleChar = e.key.length === 1;
             const isAlphaNumeric = /^[a-zA-Z0-9]$/.test(e.key);
 
@@ -451,8 +472,13 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
     }, [symbol]);
 
     useEffect(() => {
-        setIsChartReady(false);
-    }, [debugWallet]);
+        if (dataFeedRef.current && userAddress && chart) {
+            chart.chart().clearMarks();
+            dataFeedRef.current.updateUserAddress(userAddress);
+            getMarkFillData(symbol, userAddress);
+            chart.chart().refreshMarks();
+        }
+    }, [userAddress, chart, symbol]);
 
     useEffect(() => {
         if (!chart) return;
@@ -461,17 +487,6 @@ export const TradingViewProvider: React.FC<{ children: React.ReactNode }> = ({
         intervalChangedSubscribe(chart, setIsChartReady);
         visibleRangeChangedSubscribe(chart);
     }, [chart]);
-
-    useEffect(() => {
-        if (debugWallet.address) {
-            getMarkFillData(symbol, debugWallet.address).then(() => {
-                if (chart) {
-                    chart.chart().clearMarks();
-                    showBuysSellsOnChart && chart.chart().refreshMarks();
-                }
-            });
-        }
-    }, [debugWallet, chart, symbol]);
 
     useEffect(() => {
         if (chart) {

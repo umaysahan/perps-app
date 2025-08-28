@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
-import { PublicKey } from '@solana/web3.js';
 import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DepositService } from '~/services/depositService';
 
 interface DepositServiceResult {
@@ -18,7 +17,7 @@ export interface UseDepositServiceReturn {
     balance: UserBalance | null;
     isLoading: boolean;
     error: string | null;
-    executeDeposit: (amount: number) => Promise<DepositServiceResult>;
+    executeDeposit: (amount: number | 'max') => Promise<DepositServiceResult>;
     refreshBalance: () => Promise<void>;
     validateAmount: (amount: number) => { isValid: boolean; message?: string };
     startAutoRefresh: () => void;
@@ -61,9 +60,7 @@ export function useDepositService(): UseDepositServiceReturn {
         try {
             // Try to find the correct user wallet public key
             const userWalletKey =
-                sessionState.userPublicKey ||
-                sessionState.walletPublicKey ||
-                sessionState.sessionPublicKey;
+                sessionState.walletPublicKey || sessionState.sessionPublicKey;
 
             const userBalance =
                 await depositService.getUserBalance(userWalletKey);
@@ -126,7 +123,7 @@ export function useDepositService(): UseDepositServiceReturn {
 
     // Execute deposit transaction
     const executeDeposit = useCallback(
-        async (amount: number): Promise<DepositServiceResult> => {
+        async (amount: number | 'max'): Promise<DepositServiceResult> => {
             if (!depositService || !isEstablished(sessionState)) {
                 return {
                     success: false,
@@ -140,7 +137,6 @@ export function useDepositService(): UseDepositServiceReturn {
             try {
                 // Get both keys: session key for transaction building, user wallet key for PDAs
                 const userWalletKey =
-                    sessionState.userPublicKey ||
                     sessionState.walletPublicKey ||
                     sessionState.sessionPublicKey;
 

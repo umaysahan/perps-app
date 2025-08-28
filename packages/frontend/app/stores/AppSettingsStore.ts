@@ -26,8 +26,8 @@ export const bsColorSets: { [x: string]: colorSetIF } = {
         sell: '#EC407A',
     },
     protanopia: {
-        buy: '#7F8E9E',
-        sell: '#4DBE71',
+        buy: '#4DBE71',
+        sell: '#7F8E9E',
     },
 };
 

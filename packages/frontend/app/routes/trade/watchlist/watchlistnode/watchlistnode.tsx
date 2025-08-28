@@ -1,7 +1,9 @@
 import { memo, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import useNumFormatter from '~/hooks/useNumFormatter';
+import { usePythPrice } from '~/hooks/usePythPrice';
 import { useAppSettings } from '~/stores/AppSettingsStore';
+import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
 import styles from './watchlistnode.module.css';
 import Tooltip from '~/components/Tooltip/Tooltip';
@@ -22,8 +24,20 @@ const WatchListNode: React.FC<WatchListNodeProps> = memo(
         const { symbol: storeSymbol, setSymbol: setStoreSymbol } =
             useTradeDataStore();
         const { getBsColor } = useAppSettings();
+        const { usePythOracle } = useDebugStore();
 
-        const change = useMemo(() => markPx - prevDayPx, [markPx, prevDayPx]);
+        // Get Pyth price for the coin
+        const { price: pythPrice, isConnected: isPythConnected } =
+            usePythPrice(coin);
+
+        // Use Pyth price if enabled and connected, otherwise use Hyperliquid price
+        const displayPrice =
+            usePythOracle && pythPrice && isPythConnected ? pythPrice : markPx;
+
+        const change = useMemo(
+            () => displayPrice - prevDayPx,
+            [displayPrice, prevDayPx],
+        );
 
         const nodeClickListener = useMemo(
             () => () => {
@@ -36,11 +50,11 @@ const WatchListNode: React.FC<WatchListNodeProps> = memo(
 
         const shownVal = useMemo(() => {
             if (showMode === 'dollar') {
-                return formatNum(markPx);
+                return formatNum(displayPrice);
             }
-            const percentage = ((markPx - prevDayPx) / prevDayPx) * 100;
+            const percentage = ((displayPrice - prevDayPx) / prevDayPx) * 100;
             return `${change > 0 ? '+' : ''}${formatNum(percentage, 2)}%`;
-        }, [showMode, change, formatNum, markPx, prevDayPx]);
+        }, [showMode, change, formatNum, displayPrice, prevDayPx]);
 
         const color = useMemo(
             () =>
@@ -78,7 +92,8 @@ const WatchListNode: React.FC<WatchListNodeProps> = memo(
         prev.markPx === next.markPx &&
         prev.prevDayPx === next.prevDayPx &&
         prev.isActive === next.isActive &&
-        prev.showMode === next.showMode,
+        prev.showMode === next.showMode &&
+        prev.disabled === next.disabled,
 );
 
 export default WatchListNode;

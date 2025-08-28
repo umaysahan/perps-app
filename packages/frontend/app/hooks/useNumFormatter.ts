@@ -225,12 +225,23 @@ export function useNumFormatter() {
             );
 
             // Optionally remove trailing zeros in decimal part
-            if (trimTrailingZeros && formattedNum.includes('.')) {
-                // Remove trailing zeros after decimal point and optional trailing dot
+            if (
+                trimTrailingZeros &&
+                formattedNum.includes(activeDecimalSeparator)
+            ) {
+                // Create a regex pattern that uses the active decimal separator
+                const escapedSeparator = activeDecimalSeparator.replace(
+                    /[.*+?^${}()|[\]\\]/g,
+                    '\\$&',
+                );
+                // Remove trailing zeros after decimal point and optional trailing separator
                 formattedNum = formattedNum
-                    .replace(/(\.\d*?[1-9])0+$/g, '$1')
-                    .replace(/\.0+$/, '')
-                    .replace(/\.$/, '');
+                    .replace(
+                        new RegExp(`(${escapedSeparator}\\d*?[1-9])0+$`, 'g'),
+                        '$1',
+                    )
+                    .replace(new RegExp(`${escapedSeparator}0+$`), '')
+                    .replace(new RegExp(`${escapedSeparator}$`), '');
             }
 
             return formattedNum;
@@ -243,6 +254,7 @@ export function useNumFormatter() {
             const { group, decimal } = getSeparators(numFormat.value);
 
             const cleaned = str
+                .replace(/^\$/, '') // Remove leading $ if present
                 .replace(new RegExp(`\\${group}`, 'g'), '')
                 .replace(decimal, '.');
 

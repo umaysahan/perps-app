@@ -1,4 +1,5 @@
 import type {
+    Fill,
     UserActiveTwap,
     UserFillsData,
     UserFunding,
@@ -20,9 +21,18 @@ import type {
 import { parseNum } from '../utils/orderbook/OrderBookUtils';
 
 export function processUserFills(data: UserFillsData): UserFillIF[] {
-    const ret: UserFillIF[] = [];
-    data.fills.forEach((fill) => {
-        ret.push({
+    const fillMap = new Map<string, UserFillIF>();
+
+    data.fills.forEach((fill: Fill) => {
+        // Create a unique key for deduplication based on coin, oid, and startPosition string
+        const startPosRaw = fill.startPosition
+            ? String(fill.startPosition)
+            : undefined;
+        const dedupeKey = startPosRaw
+            ? `${fill.coin}-${fill.oid}-${startPosRaw}`
+            : `${fill.coin}-${fill.oid}-${fill.tid}`; // Fallback to tid if no startPosition
+
+        const processedFill: UserFillIF = {
             time: fill.time,
             coin: fill.coin,
             crossed: fill.crossed,
@@ -36,9 +46,18 @@ export function processUserFills(data: UserFillsData): UserFillIF[] {
             fee: parseNum(fill.fee),
             value: parseNum(fill.sz) * parseNum(fill.px),
             closedPnl: parseFloat(fill.closedPnl),
-        } as UserFillIF);
+            startPositionRaw: startPosRaw,
+            startPosition: startPosRaw ? parseFloat(startPosRaw) : undefined,
+        };
+
+        // Only add if not already present (deduplication)
+        if (!fillMap.has(dedupeKey)) {
+            fillMap.set(dedupeKey, processedFill);
+        }
     });
-    return ret;
+
+    // Convert map values back to array
+    return Array.from(fillMap.values());
 }
 
 export function sortUserFills(
@@ -333,6 +352,10 @@ export function processUserTwapSliceFills(
     data: UserTwapSliceFillsData,
 ): TwapSliceFillIF[] {
     const ret: TwapSliceFillIF[] = [];
+    if (!data || !data.twapSliceFills) {
+        console.warn('[TWAP SLICE FILLS] No twapSliceFills data found');
+        return ret;
+    }
     data.twapSliceFills.forEach((f) => {
         ret.push({
             coin: f.fill.coin,

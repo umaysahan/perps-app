@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
-import { PublicKey } from '@solana/web3.js';
 import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { WithdrawService } from '~/services/withdrawService';
 
 interface WithdrawServiceResult {
@@ -18,7 +17,9 @@ export interface UseWithdrawServiceReturn {
     availableBalance: AvailableWithdrawBalance | null;
     isLoading: boolean;
     error: string | null;
-    executeWithdraw: (amount: number) => Promise<WithdrawServiceResult>;
+    executeWithdraw: (
+        amount: number | undefined,
+    ) => Promise<WithdrawServiceResult>;
     refreshBalance: () => Promise<void>;
     validateAmount: (amount: number) => { isValid: boolean; message?: string };
     startAutoRefresh: () => void;
@@ -60,21 +61,23 @@ export function useWithdrawService(): UseWithdrawServiceReturn {
         try {
             // Get user's wallet public key
             const userWalletKey =
-                sessionState.userPublicKey ||
-                sessionState.walletPublicKey ||
-                sessionState.sessionPublicKey;
+                sessionState.walletPublicKey || sessionState.sessionPublicKey;
+
+            // Get marketId from TradeDataStore (default to BTC market if not available)
+            const marketId = BigInt(64); // TODO: Get from TradeDataStore when available
 
             // Try session key first (as that's what's used for transactions)
             let balance = await withdrawService.getAvailableWithdrawBalance(
                 sessionState.sessionPublicKey,
+                marketId,
             );
 
             // If no balance with session key, try wallet key
             if (!balance || balance.decimalized === 0) {
-                balance =
-                    await withdrawService.getAvailableWithdrawBalance(
-                        userWalletKey,
-                    );
+                balance = await withdrawService.getAvailableWithdrawBalance(
+                    userWalletKey,
+                    marketId,
+                );
             }
 
             if (balance) {
@@ -142,7 +145,7 @@ export function useWithdrawService(): UseWithdrawServiceReturn {
 
     // Execute withdraw transaction
     const executeWithdraw = useCallback(
-        async (amount: number): Promise<WithdrawServiceResult> => {
+        async (amount: number | undefined): Promise<WithdrawServiceResult> => {
             if (!withdrawService || !isEstablished(sessionState)) {
                 return {
                     success: false,
@@ -156,7 +159,6 @@ export function useWithdrawService(): UseWithdrawServiceReturn {
             try {
                 // Get both keys: session key for transaction building, user wallet key for PDAs
                 const userWalletKey =
-                    sessionState.userPublicKey ||
                     sessionState.walletPublicKey ||
                     sessionState.sessionPublicKey;
 

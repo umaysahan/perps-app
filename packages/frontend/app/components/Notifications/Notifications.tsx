@@ -7,12 +7,12 @@ import { useSdk } from '~/hooks/useSdk';
 import { useVersionCheck } from '~/hooks/useVersionCheck';
 import { useViewed } from '~/stores/AlreadySeenStore';
 import { useAppOptions } from '~/stores/AppOptionsStore';
-import { useDebugStore } from '~/stores/DebugStore';
 import {
     useNotificationStore,
     type notificationIF,
     type NotificationStoreIF,
 } from '~/stores/NotificationStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
 import { WsChannels } from '~/utils/Constants';
 import SimpleButton from '../SimpleButton/SimpleButton';
 import Notification from './Notification';
@@ -30,23 +30,136 @@ export default function Notifications() {
     const data: NotificationStoreIF = useNotificationStore();
     const backgroundFillNotifRef = useRef(false);
     backgroundFillNotifRef.current = enableBackgroundFillNotif;
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
     const { info } = useSdk();
 
     const { showReload, setShowReload } = useVersionCheck();
+    const [hoveredNotifications, setHoveredNotifications] = useState<
+        Set<number>
+    >(new Set());
+
+    const handleMouseEnter = useCallback((slug: number) => {
+        setHoveredNotifications((prev) => {
+            // If the slug is already in the set, return previous state to prevent unnecessary re-renders
+            if (prev.has(slug)) {
+                console.log(
+                    `[Hover] Already hovering over notification ${slug}`,
+                );
+                return prev;
+            }
+
+            // Create a new set with the new slug
+            const newSet = new Set(prev);
+            newSet.add(slug);
+            console.log(
+                `[Hover] Added hover for notification ${slug}, current hovers:`,
+                Array.from(newSet),
+            );
+            return newSet;
+        });
+    }, []);
+
+    const handleMouseLeave = useCallback((slug: number) => {
+        setHoveredNotifications((prev) => {
+            // If the set is already empty, return it as is
+            if (prev.size === 0) {
+                console.log(
+                    `[Hover] MouseLeave on ${slug} but no hover states exist`,
+                );
+                return prev;
+            }
+
+            // If the slug isn't in the set, return previous state to prevent unnecessary re-renders
+            if (!prev.has(slug)) {
+                console.log(
+                    `[Hover] MouseLeave on ${slug} but it's not in hover states:`,
+                    Array.from(prev),
+                );
+                return prev;
+            }
+
+            // Create a new set without the slug
+            const newSet = new Set(prev);
+            newSet.delete(slug);
+
+            // Return a new empty set if no hovers remain, otherwise return the updated set
+            const result =
+                newSet.size === 0 ? new Set<number>() : new Set(newSet);
+            console.log(
+                `[Hover] Removed hover for notification ${slug}, remaining hovers:`,
+                result.size === 0 ? 'none' : Array.from(result),
+            );
+
+            return result;
+        });
+    }, []);
+
+    // Effect to clean up hover states when notifications change
+    useEffect(() => {
+        const currentSlugs = new Set(data.notifications.map((n) => n.slug));
+
+        setHoveredNotifications((prev) => {
+            // If there are no hovered notifications, nothing to do
+            if (prev.size === 0) return prev;
+
+            // Check if any hovered notifications no longer exist
+            const hasStaleHovers = Array.from(prev).some(
+                (slug) => !currentSlugs.has(slug),
+            );
+
+            // If all hovered notifications still exist, return previous state
+            if (!hasStaleHovers) return prev;
+
+            // Create a new set with only the hover states for existing notifications
+            const updated = new Set<number>();
+            let hasChanges = false;
+
+            prev.forEach((slug) => {
+                if (currentSlugs.has(slug)) {
+                    updated.add(slug);
+                } else {
+                    hasChanges = true;
+                }
+            });
+
+            // Only update state if there were actual changes
+            if (!hasChanges) return prev;
+            return updated.size > 0 ? updated : new Set<number>();
+        });
+    }, [data.notifications]);
+
+    const handleDismiss = useCallback(
+        (slug: number) => {
+            // Remove the notification from hoveredNotifications when dismissed
+            setHoveredNotifications((prev) => {
+                // If the slug isn't in the set, return previous state
+                if (!prev.has(slug)) return prev;
+
+                // Create a new set without the slug
+                const newSet = new Set(prev);
+                newSet.delete(slug);
+
+                // If the set is empty, return a new empty set to ensure reference changes
+                return newSet.size === 0 ? new Set() : newSet;
+            });
+            // Call the original remove function
+            data.remove(slug);
+        },
+        [data.remove],
+    );
 
     useEffect(() => {
         if (!info) return;
-        if (!debugWallet.address) return;
+        if (!userAddress || userAddress === '') return;
         const { unsubscribe } = info.subscribe(
             {
                 type: WsChannels.NOTIFICATION,
-                user: debugWallet.address,
+                user: userAddress,
             },
             postNotification,
         );
         return unsubscribe;
-    }, [debugWallet, info]);
+    }, [userAddress, info]);
 
     const postNotification = useCallback((payload: NotificationMsg) => {
         if (!payload || !payload.data) return;
@@ -143,10 +256,22 @@ export default function Notifications() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
-                            transition={{ duration: 0.3 }}
+                            transition={{
+                                duration: 0.3,
+                            }}
                             layout // Optional: enables smooth stacking animations
                         >
-                            <Notification data={n} dismiss={data.remove} />
+                            <Notification
+                                key={n.slug}
+                                data={n}
+                                dismiss={handleDismiss}
+                                onMouseEnter={handleMouseEnter}
+                                onMouseLeave={handleMouseLeave}
+                                shouldPauseDismissal={
+                                    data.notifications.length <= 3 &&
+                                    hoveredNotifications.size > 0
+                                }
+                            />
                         </motion.div>
                     ))}
             </AnimatePresence>

@@ -10,15 +10,24 @@ import {
 import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
 import packageJson from '../../../../package.json';
 import styles from './DropdownMenu.module.css';
+import { externalURLs } from '~/utils/Constants';
 
 const menuItems = [
     // { name: 'Docs', icon: <FaFileAlt /> },
-    { name: 'Twitter', icon: <FaTwitter /> },
-    { name: 'Discord', icon: <FaDiscord /> },
+    {
+        name: 'Twitter',
+        icon: <FaTwitter />,
+        url: externalURLs.twitter,
+    },
+    {
+        name: 'Discord',
+        icon: <FaDiscord />,
+        url: externalURLs.discord,
+    },
     // { name: 'Medium', icon: <FaMediumM /> },
     // { name: 'Privacy', icon: <FaUserSecret /> },
     // { name: 'Terms of Service', icon: <FaFileAlt /> },
-    // { name: 'FAQ', icon: <FaQuestionCircle /> },
+    // { name: 'FAQ', icon: <LuCircleHelp /> },
 ];
 
 interface DropdownMenuProps {
@@ -38,8 +47,12 @@ const DropdownMenu = ({ setIsDropdownMenuOpen }: DropdownMenuProps) => {
 
     return (
         <div className={styles.container}>
-            {menuItems.map((item, index) => (
-                <div key={index} className={styles.menuItem}>
+            {menuItems.map((item) => (
+                <div
+                    key={JSON.stringify(item)}
+                    className={styles.menuItem}
+                    onClick={() => window.open(item.url, '_blank')}
+                >
                     <span>{item.name}</span>
                     <span>{item.icon}</span>
                 </div>

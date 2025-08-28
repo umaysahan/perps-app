@@ -5,7 +5,10 @@ import LineComponent, { type LineData } from './component/LineComponent';
 import LabelComponent from './component/LabelComponent';
 import { useTradingView } from '~/contexts/TradingviewContext';
 import type { IPaneApi } from '~/tv/charting_library';
-import type { LabelLocationData } from '../overlayCanvas/overlayCanvasUtils';
+import {
+    getMainSeriesPaneIndex,
+    type LabelLocationData,
+} from '../overlayCanvas/overlayCanvasUtils';
 import { getPricetoPixel } from './customOrderLineUtils';
 import { MIN_VISIBLE_ORDER_LABEL_RATIO } from '~/utils/Constants';
 
@@ -48,11 +51,20 @@ export default function OrderLines({
     >(undefined);
 
     useEffect(() => {
-        const updatedLines = openLines.map((line) =>
-            selectedLine && line.oid === selectedLine.parentLine.oid
-                ? selectedLine.parentLine
-                : line,
-        );
+        let matchFound = false;
+
+        const updatedLines = openLines.map((line) => {
+            if (selectedLine && line.oid === selectedLine.parentLine.oid) {
+                matchFound = true;
+                return selectedLine.parentLine;
+            }
+            return line;
+        });
+
+        if (selectedLine && !matchFound) {
+            setSelectedLine(undefined);
+        }
+
         setLines([...updatedLines, ...positionLines]);
     }, [openLines, positionLines, selectedLine]);
 
@@ -60,7 +72,9 @@ export default function OrderLines({
         if (!chart || !scaleData) return;
 
         const chartRef = chart.activeChart();
-        const priceScalePane = chartRef.getPanes()[0] as IPaneApi;
+        const paneIndex = getMainSeriesPaneIndex(chart);
+        if (paneIndex === null) return;
+        const priceScalePane = chartRef.getPanes()[paneIndex] as IPaneApi;
         const priceScale = priceScalePane.getMainSourcePriceScale();
         if (!priceScale) return;
 
@@ -119,7 +133,9 @@ export default function OrderLines({
     }, [chart, scaleData]);
 
     useEffect(() => {
-        if (!scaleData || !lines.length || !chart || !canvasSize) return;
+        if (!scaleData || !chart || !canvasSize) return;
+
+        if (!lines.length) setVisibleLines([]);
 
         const [minY, maxY] = scaleData.yScale.domain();
 

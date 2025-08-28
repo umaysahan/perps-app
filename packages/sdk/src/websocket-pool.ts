@@ -4,6 +4,7 @@ import {
     type SocketType,
     type Callback,
     type ActiveSubscription,
+    type ErrCallback,
 } from './websocket-instance';
 import type { Subscription } from './utils/types';
 
@@ -43,12 +44,14 @@ const CHANNEL_TO_SOCKET_TYPE: Record<string, SocketType> = {
     userTwapSliceFills: 'user',
     userTwapHistory: 'user',
     notification: 'user',
+    error: 'user',
 };
 
 export class WebSocketPool {
     private sockets: Map<string, WebSocketInstance> = new Map();
     private config: WebSocketPoolConfig;
     private customChannelMapping: Record<string, string> = {};
+    private useMarketOnly: boolean = false;
 
     constructor(config: WebSocketPoolConfig) {
         this.config = config;
@@ -120,6 +123,10 @@ export class WebSocketPool {
     private getSocketForSubscription(
         subscription: Subscription,
     ): WebSocketInstance | undefined {
+        if (this.useMarketOnly) {
+            return this.sockets.get('market');
+        }
+
         const channelType = subscription.type;
 
         // Check custom mapping first
@@ -140,7 +147,11 @@ export class WebSocketPool {
     /**
      * Subscribe to a channel, automatically routing to the correct socket
      */
-    public subscribe(subscription: Subscription, callback: Callback) {
+    public subscribe(
+        subscription: Subscription,
+        callback: Callback,
+        errorCallback?: ErrCallback,
+    ) {
         const socket = this.getSocketForSubscription(subscription);
 
         if (!socket) {
@@ -149,7 +160,12 @@ export class WebSocketPool {
             );
         }
 
-        return socket.subscribe(subscription, callback);
+        return socket.subscribe(
+            subscription,
+            callback,
+            undefined,
+            errorCallback,
+        );
     }
 
     /**
@@ -310,6 +326,10 @@ export class WebSocketPool {
             }, 200);
         });
     }
+
+    public setUseMarketOnly(useMarketOnly: boolean) {
+        this.useMarketOnly = useMarketOnly;
+    }
 }
 
 /**
@@ -318,6 +338,7 @@ export class WebSocketPool {
  */
 export class MultiSocketInfo {
     private pool: WebSocketPool;
+    private useMarketOnly: boolean = false;
 
     constructor(
         endpoints: WebSocketEndpoints | string,
@@ -337,8 +358,12 @@ export class MultiSocketInfo {
         });
     }
 
-    public subscribe(subscription: Subscription, callback: Callback) {
-        return this.pool.subscribe(subscription, callback);
+    public subscribe(
+        subscription: Subscription,
+        callback: Callback,
+        errorCallback?: ErrCallback,
+    ) {
+        return this.pool.subscribe(subscription, callback, errorCallback);
     }
 
     public unsubscribe(
@@ -381,5 +406,10 @@ export class MultiSocketInfo {
     // [22-07-2025] returns all active subs for stashing in useSdk hook
     public getActiveSubscriptions() {
         return this.pool.getActiveSubscriptions();
+    }
+
+    public setUseMarketOnly(useMarketOnly: boolean) {
+        this.useMarketOnly = useMarketOnly;
+        this.pool.setUseMarketOnly(useMarketOnly);
     }
 }

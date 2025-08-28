@@ -76,7 +76,7 @@ export class NotificationService {
      */
     showDepositSuccess(options: TransactionNotificationOptions): void {
         const id = `deposit-success-${Date.now()}`;
-        const amount = options.amount ? `$${options.amount.toFixed(2)}` : '';
+        const amount = options.amount ? `${options.amount.toFixed(2)}` : '';
         const token = options.token || 'USD';
 
         this.addNotification(id, {

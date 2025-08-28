@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import LineChart from '~/components/LineChart/LineChart';
 import { useInfoApi } from '~/hooks/useInfoApi';
-import { useDebugStore } from '~/stores/DebugStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
 import type { UserPositionIF } from '~/utils/UserDataIFs';
 import CollateralPieChart from '../CollateralChart/CollateralPieChart';
 
@@ -38,7 +38,7 @@ const TabChartContext: React.FC<TabChartContext> = (props) => {
         setUserProfileLineData,
     } = props;
 
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
 
     const { fetchUserPortfolio } = useInfoApi();
 
@@ -82,14 +82,14 @@ const TabChartContext: React.FC<TabChartContext> = (props) => {
     };
 
     useEffect(() => {
-        if (debugWallet.address && !isLineDataFetched) {
-            fetchUserPortfolio(debugWallet.address).then((data) => {
+        if (userAddress && !isLineDataFetched) {
+            fetchUserPortfolio(userAddress).then((data) => {
                 setUserProfileLineData(() => data);
 
                 handleLineDataFetched(true);
             });
         }
-    }, [debugWallet.address, isLineDataFetched]);
+    }, [userAddress, isLineDataFetched]);
 
     useEffect(() => {
         const key =

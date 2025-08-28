@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 interface LeverageState {
     // Per-market preferred leverage storage
@@ -23,6 +23,12 @@ interface LeverageStore extends LeverageState {
      * Gets the preferred leverage for the current market
      */
     getPreferredLeverage: () => number;
+
+    /**
+     * Selector function to get the current leverage
+     * Used for subscribing to leverage changes in components
+     */
+    selectLeverage: () => number;
 
     /**
      * Validates and applies leverage for a new market
@@ -70,13 +76,10 @@ export const useLeverageStore = create<LeverageStore>()(
                 const state = get();
 
                 if (!state.currentMarket) {
-                    console.warn(
-                        'Cannot set preferred leverage without a current market',
-                    );
+                    set({ currentLeverage: leverage });
                     return;
                 }
 
-                // Update the preferred leverage for the current market
                 const updatedPreferences = {
                     ...state.marketLeveragePreferences,
                     [state.currentMarket]: leverage,
@@ -86,10 +89,11 @@ export const useLeverageStore = create<LeverageStore>()(
                     marketLeveragePreferences: updatedPreferences,
                     currentLeverage: leverage,
                 });
+            },
 
-                console.log(
-                    `Saved preferred leverage for ${state.currentMarket}: ${leverage}x`,
-                );
+            selectLeverage: () => {
+                const state = get();
+                return state.currentLeverage;
             },
 
             getPreferredLeverage: () => {

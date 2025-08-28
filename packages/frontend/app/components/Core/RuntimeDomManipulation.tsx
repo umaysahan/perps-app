@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 
-interface propsIF {}
-
-export default function RuntimeDomManipulation(props: propsIF) {
+export default function RuntimeDomManipulation() {
     // if want to enable spellcheck for a specific element, add the class spellcheck-enabled to the element
     useEffect(() => {
         const disableSpellcheck = (root: HTMLElement) => {
@@ -12,6 +10,9 @@ export default function RuntimeDomManipulation(props: propsIF) {
                     ? el.setAttribute('spellcheck', 'true')
                     : el.setAttribute('spellcheck', 'false'),
             );
+            inputs.forEach((el) => {
+                el.setAttribute('autocomplete', 'off');
+            });
         };
 
         // Initial run

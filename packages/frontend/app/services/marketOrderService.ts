@@ -5,17 +5,24 @@ import {
     buildOrderEntryTransaction,
 } from '@crocswap-libs/ambient-ember';
 import { Connection, PublicKey } from '@solana/web3.js';
+import { MARKET_ORDER_PRICE_OFFSET_USD } from '~/utils/Constants';
+import { marketOrderLogManager } from './MarketOrderLogManager';
 
 export interface MarketOrderResult {
     success: boolean;
     error?: string;
     signature?: string;
     confirmed?: boolean;
+    timeOfSubmission?: number;
 }
 
 export interface MarketOrderParams {
     quantity: number; // User input quantity (will be multiplied by 100_000_000)
     side: 'buy' | 'sell';
+    leverage?: number; // Optional leverage multiplier for calculating userSetImBps
+    bestBidPrice?: number; // Best bid price from order book (for sell orders)
+    bestAskPrice?: number; // Best ask price from order book (for buy orders)
+    reduceOnly?: boolean; // Optional reduce-only flag
 }
 
 /**
@@ -63,22 +70,89 @@ export class MarketOrderService {
             console.log('  - Display quantity:', params.quantity);
             console.log('  - On-chain quantity:', onChainQuantity.toString());
 
+            // Calculate userSetImBps from leverage if provided
+            let userSetImBps: number | undefined;
+            if (params.leverage && params.leverage > 0) {
+                userSetImBps = Math.floor((1 / params.leverage) * 10000) - 1;
+                console.log('  - Leverage:', params.leverage);
+                console.log('  - Calculated userSetImBps:', userSetImBps);
+            }
+
+            // Get the cached market order log page to avoid RPC call
+            const cachedLogPage = marketOrderLogManager.getCachedLogPage();
+            if (cachedLogPage !== undefined) {
+                console.log(
+                    '  - Using cached marketOrderLogPage:',
+                    cachedLogPage,
+                );
+            }
+
+            // Calculate fill prices based on order book
+            let fillPrice: bigint;
+            if (params.side === 'buy') {
+                // For buy orders: use best ask + offset
+                if (!params.bestAskPrice) {
+                    throw new Error(
+                        'Cannot execute market buy order: No ask prices available in order book',
+                    );
+                }
+                const fillPriceUsd =
+                    params.bestAskPrice + MARKET_ORDER_PRICE_OFFSET_USD;
+                fillPrice = BigInt(Math.floor(fillPriceUsd * 1_000_000)); // Convert to 6 decimal places
+                console.log('  - Buy order fill price calculation:');
+                console.log('    - Best ask price:', params.bestAskPrice);
+                console.log('    - Offset:', MARKET_ORDER_PRICE_OFFSET_USD);
+                console.log('    - Fill price USD:', fillPriceUsd);
+                console.log(
+                    '    - Fill price (on-chain):',
+                    fillPrice.toString(),
+                );
+            } else {
+                // For sell orders: use best bid - offset
+                if (!params.bestBidPrice) {
+                    throw new Error(
+                        'Cannot execute market sell order: No bid prices available in order book',
+                    );
+                }
+                const fillPriceUsd =
+                    params.bestBidPrice - MARKET_ORDER_PRICE_OFFSET_USD;
+                fillPrice = BigInt(Math.floor(fillPriceUsd * 1_000_000)); // Convert to 6 decimal places
+                console.log('  - Sell order fill price calculation:');
+                console.log('    - Best bid price:', params.bestBidPrice);
+                console.log('    - Offset:', MARKET_ORDER_PRICE_OFFSET_USD);
+                console.log('    - Fill price USD:', fillPriceUsd);
+                console.log(
+                    '    - Fill price (on-chain):',
+                    fillPrice.toString(),
+                );
+            }
+
             // Build the appropriate transaction based on side
             if (params.side === 'buy') {
                 console.log('  - Building market BUY order...');
+                console.log('  - Log page:', cachedLogPage);
+
+                const orderParams: any = {
+                    marketId: marketId,
+                    orderId: orderId,
+                    side: OrderSide.Bid,
+                    qty: onChainQuantity,
+                    price: BigInt('0'), // market order convention is to use 0
+                    fillPrice: fillPrice,
+                    tif: { type: TimeInForce.IOC },
+                    user: userPublicKey,
+                    actor: sessionPublicKey,
+                    rentPayer: rentPayer,
+                    keeper: sessionPublicKey,
+                    userSetImBps: userSetImBps,
+                    includesFillAtMarket: true,
+                    marketOrderLogPage: cachedLogPage,
+                    reduceOnly: params.reduceOnly,
+                };
+
                 const transaction = buildOrderEntryTransaction(
                     this.connection,
-                    {
-                        marketId: marketId,
-                        orderId: orderId,
-                        side: OrderSide.Bid,
-                        qty: onChainQuantity,
-                        price: BigInt('0'), // market order convention is to use 0
-                        tif: { type: TimeInForce.IOC },
-                        user: userPublicKey,
-                        actor: sessionPublicKey,
-                        rentPayer: rentPayer,
-                    },
+                    orderParams,
                     'confirmed',
                 );
                 console.log('✅ Market buy order built successfully');
@@ -86,19 +160,27 @@ export class MarketOrderService {
                 return transaction;
             } else {
                 console.log('  - Building market SELL order...');
+                const orderParams: any = {
+                    marketId: marketId,
+                    orderId: orderId,
+                    side: OrderSide.Ask,
+                    qty: onChainQuantity,
+                    price: BigInt('0'), // market order convention is to use 0
+                    fillPrice: fillPrice,
+                    tif: { type: TimeInForce.IOC },
+                    user: userPublicKey,
+                    actor: sessionPublicKey,
+                    rentPayer: rentPayer,
+                    keeper: sessionPublicKey,
+                    userSetImBps: userSetImBps,
+                    includesFillAtMarket: true, // Ensure fill at market is included
+                    marketOrderLogPage: cachedLogPage,
+                    reduceOnly: params.reduceOnly,
+                };
+
                 const transaction = buildOrderEntryTransaction(
                     this.connection,
-                    {
-                        marketId: marketId,
-                        orderId: orderId,
-                        side: OrderSide.Bid,
-                        qty: onChainQuantity,
-                        price: BigInt('0'), // market order convention is to use 0
-                        tif: { type: TimeInForce.IOC },
-                        user: userPublicKey,
-                        actor: sessionPublicKey,
-                        rentPayer: rentPayer,
-                    },
+                    orderParams,
                     'confirmed',
                 );
                 console.log('✅ Market sell order built successfully');
@@ -166,69 +248,42 @@ export class MarketOrderService {
                 })),
             );
 
+            const timeOfSubmission = Date.now();
+
             // Send the transaction using Fogo session
             console.log('  - Calling sendTransaction...');
-            const result = await sendTransaction(instructions);
+            const transactionResult = await sendTransaction(instructions);
 
-            console.log('📥 Transaction result:', result);
+            console.log('📥 Transaction result:', transactionResult);
 
-            // Extract signature from result
-            let signature: string | undefined;
-
-            if (typeof result === 'string') {
-                signature = result;
-            } else if (result && typeof result === 'object') {
-                // Check various possible signature locations
-                signature =
-                    result.signature ||
-                    result.txid ||
-                    result.hash ||
-                    result.transactionSignature;
-
-                // If still not found, check for a nested result object
-                if (!signature && result.result) {
-                    signature =
-                        result.result.signature ||
-                        result.result.txid ||
-                        result.result;
-                }
-            }
-
-            console.log('🔑 Extracted signature:', signature);
-
-            // Track transaction confirmation
-            if (signature) {
+            if (
+                transactionResult &&
+                transactionResult.signature &&
+                !('error' in transactionResult)
+            ) {
                 console.log(
-                    '🔍 Starting transaction tracking for signature:',
-                    signature,
+                    '✅ Order transaction successful:',
+                    transactionResult.signature,
                 );
 
-                // Wait for confirmation
-                const isConfirmed = await this.trackTransactionConfirmation(
-                    signature,
-                    params,
-                );
-
-                if (isConfirmed) {
-                    console.log('✅ Market order confirmed on-chain');
-                    return {
-                        success: true,
-                        signature,
-                        confirmed: true,
-                    };
-                } else {
-                    return {
-                        success: false,
-                        error: 'Transaction failed or timed out',
-                        signature,
-                        confirmed: false,
-                    };
-                }
+                return {
+                    success: true,
+                    signature: transactionResult.signature,
+                    confirmed: transactionResult.confirmed,
+                    timeOfSubmission,
+                };
             } else {
-                console.warn('⚠️ No signature returned from sendTransaction');
+                const errorMessage =
+                    typeof transactionResult?.error === 'string'
+                        ? transactionResult.error
+                        : 'Order transaction failed';
                 return {
                     success: false,
-                    error: 'No transaction signature received',
+                    error: errorMessage,
+                    signature: transactionResult.signature
+                        ? transactionResult.signature
+                        : undefined,
+                    timeOfSubmission,
                 };
             }
         } catch (error) {

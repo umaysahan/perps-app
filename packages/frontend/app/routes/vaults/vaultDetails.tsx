@@ -19,10 +19,11 @@ import { useVaultManager } from './useVaultManager';
 import VaultCharts from './vaultCharts';
 import styles from './vaultDetails.module.css';
 import VaultInfo from './vaultInfo';
+import { useUserDataStore } from '~/stores/UserDataStore';
 
 export default function VaultDetails() {
     const { vaultAddress } = useParams<{ vaultAddress: string }>();
-    const { setDebugWallet } = useDebugStore();
+    const { setUserAddress } = useUserDataStore();
     const { fetchVaultDetails } = useInfoApi();
 
     const { formatNum } = useNumFormatter();
@@ -64,10 +65,7 @@ export default function VaultDetails() {
 
     useEffect(() => {
         if (vaultAddress) {
-            setDebugWallet({
-                address: vaultAddress,
-                label: 'Vault',
-            });
+            setUserAddress(vaultAddress);
         }
     }, [vaultAddress]);
 

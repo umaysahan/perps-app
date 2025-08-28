@@ -1,10 +1,10 @@
-import { AiOutlineQuestionCircle } from 'react-icons/ai';
-import ToggleSwitch from '../../ToggleSwitch/ToggleSwitch';
-import styles from './ReduceAndProfitToggle.module.css';
-import Tooltip from '~/components/Tooltip/Tooltip';
 import { useState } from 'react';
 import { BsChevronDown } from 'react-icons/bs';
+import { LuCircleHelp } from 'react-icons/lu';
+import Tooltip from '~/components/Tooltip/Tooltip';
+import ToggleSwitch from '../../ToggleSwitch/ToggleSwitch';
 import ChaseDistance from '../ChaseDistance/ChaseDistance';
+import styles from './ReduceAndProfitToggle.module.css';
 
 interface PropsIF {
     isReduceOnlyEnabled: boolean;
@@ -142,7 +142,9 @@ export default function ReduceAndProfitToggle(props: PropsIF) {
         </section>
     );
 
-    const showTakeProfitToggle = ['market', 'limit'].includes(marketOrderType);
+    // temporarily disable tp/sl
+    const showTakeProfitToggle = [''].includes(marketOrderType);
+    // const showTakeProfitToggle = ['market', 'limit'].includes(marketOrderType);
     const showReduceToggle = marketOrderType !== 'chase_limit';
     const showChasingInterval = marketOrderType === 'chase_limit';
     const showChaseDistance = false;
@@ -155,7 +157,7 @@ export default function ReduceAndProfitToggle(props: PropsIF) {
                 <div className={styles.inputDetailsLabel}>
                     <span>Chasing Interval</span>
                     <Tooltip content={'chasing interval'} position='right'>
-                        <AiOutlineQuestionCircle size={13} />
+                        <LuCircleHelp size={12} />
                     </Tooltip>
                 </div>
                 <span className={styles.inputDetailValue}>Atomic</span>
@@ -204,7 +206,7 @@ export default function ReduceAndProfitToggle(props: PropsIF) {
             {showReduceToggle && (
                 <div
                     className={styles.reduceToggleContent}
-                    onClick={() => handleToggleReduceOnly()}
+                    // onClick={() => handleToggleReduceOnly()}
                 >
                     <ToggleSwitch
                         isOn={isReduceOnlyEnabled}

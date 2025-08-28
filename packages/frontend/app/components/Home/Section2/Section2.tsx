@@ -1,19 +1,16 @@
-import { FaDiscord, FaGithub } from 'react-icons/fa';
+import {
+    FaDiscord,
+    // FaGithub
+} from 'react-icons/fa';
 import { FaMedium } from 'react-icons/fa6';
 import { IoDocumentTextSharp } from 'react-icons/io5';
-import { FiTool } from 'react-icons/fi';
-// import {
-//     DISCORD_LINK,
-//     DOCS_LINK,
-//     MEDIUM_LINK,
-//     TWITTER_LINK,
-// } from '../../../ambient-utils/constants';
+// import { FiTool } from 'react-icons/fi';
 // import { useTermsAgreed } from '../../../App/hooks/useTermsAgreed';
 // import useMediaQuery from '../../../utils/hooks/useMediaQuery';
 import styles from './Section2.module.css';
 import useMediaQuery from '~/hooks/useMediaQuery';
-const DISCORD_LINK = 'https://discord.gg/ambient-finance';
-const TWITTER_LINK = 'https://twitter.com/ambient_finance';
+import { externalURLs } from '~/utils/Constants';
+import type { JSX } from 'react';
 const TERMS_OF_SERVICE_LINK = 'https://ambient.finance/terms';
 const PRIVACY_POLICY_LINK = 'https://ambient.finance/privacy';
 const MEDIUM_LINK = 'https://crocswap.medium.com/';
@@ -70,14 +67,14 @@ export default function Section2() {
         {
             label: 'X / Twitter',
             text: 'Follow the latest from Ambient Finance',
-            link: TWITTER_LINK,
+            link: externalURLs.twitter,
             linkLabel: 'x.com/ambient_finance',
             icon: twitterSvg,
         },
         {
             label: 'Discord',
             text: 'Join in the discussion',
-            link: DISCORD_LINK,
+            link: externalURLs.discord,
             linkLabel: 'discord.gg/ambient-finance',
             icon: <FaDiscord />,
         },

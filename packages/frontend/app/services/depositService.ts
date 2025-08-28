@@ -1,8 +1,9 @@
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import {
-    getUserTokenBalance,
     buildDepositMarginTx,
+    getUserTokenBalance,
 } from '@crocswap-libs/ambient-ember';
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import { MIN_DEPOSIT_AMOUNT } from '~/utils/Constants';
 // Removed notificationService - notifications handled by components
 
 // USD token mint address from root.tsx configuration
@@ -13,6 +14,7 @@ export interface DepositServiceResult {
     error?: string;
     signature?: string;
     confirmed?: boolean;
+    timeOfSubmission?: number;
 }
 
 export interface UserBalance {
@@ -42,10 +44,6 @@ export class DepositService {
     ): Promise<UserBalance> {
         try {
             const mintToUse = mint || USD_MINT;
-            console.log('🔍 Debugging getUserBalance call:');
-            console.log('  - Connection:', this.connection);
-            console.log('  - User wallet pubkey:', userWallet.toString());
-            console.log('  - Mint address:', mintToUse.toString());
 
             const balance = await getUserTokenBalance(
                 this.connection,
@@ -53,20 +51,13 @@ export class DepositService {
                 mintToUse,
             );
 
-            console.log('  - Raw balance from SDK:', balance);
-            console.log('  - Balance type:', typeof balance);
-
             // Convert from non-decimalized to decimalized (divide by 10^6)
             const decimalized = Number(balance) / Math.pow(10, 6);
-
-            console.log('  - Decimalized balance:', decimalized);
 
             const result = {
                 balance: Number(balance),
                 decimalized,
             };
-
-            console.log('  - Final result:', result);
 
             return result;
         } catch (error) {
@@ -87,14 +78,17 @@ export class DepositService {
      * @param amount - Deposit amount in decimalized form
      * @returns validation result
      */
-    validateDepositAmount(amount: number): {
+    validateDepositAmount(amount: number | 'max'): {
         isValid: boolean;
         message?: string;
     } {
-        if (amount < 10) {
+        if (amount === 'max') {
+            return { isValid: true };
+        }
+        if (amount && amount < MIN_DEPOSIT_AMOUNT) {
             return {
                 isValid: false,
-                message: 'Minimum deposit value is $10',
+                message: `Minimum deposit value is $${MIN_DEPOSIT_AMOUNT}`,
             };
         }
         return { isValid: true };
@@ -109,7 +103,7 @@ export class DepositService {
      * @returns Promise<Transaction>
      */
     async buildDepositTransaction(
-        amount: number,
+        amount: number | 'max',
         sessionPublicKey: PublicKey,
         userWalletKey: PublicKey,
         payerPublicKey?: PublicKey,
@@ -119,9 +113,10 @@ export class DepositService {
             console.log('  - Decimalized amount:', amount);
 
             // Convert decimalized amount to non-decimalized (multiply by 10^6)
-            const nonDecimalizedAmount = BigInt(
-                Math.floor(amount * Math.pow(10, 6)),
-            );
+            const nonDecimalizedAmount =
+                amount === 'max'
+                    ? 'max'
+                    : BigInt(Math.floor(amount * Math.pow(10, 6)));
             console.log(
                 '  - Non-decimalized amount (bigint):',
                 nonDecimalizedAmount,
@@ -146,8 +141,8 @@ export class DepositService {
 
             const transaction = await buildDepositMarginTx(
                 this.connection,
-                nonDecimalizedAmount,
                 userWalletKey,
+                nonDecimalizedAmount,
                 {
                     actor: sessionPublicKey, // sessionPublicKey as actor
                     rentPayer: rentPayer, // payer from SessionState or fallback
@@ -197,7 +192,7 @@ export class DepositService {
      * @returns Promise<DepositServiceResult>
      */
     async executeDeposit(
-        amount: number,
+        amount: number | 'max',
         sessionPublicKey: PublicKey,
         userWalletKey: PublicKey,
         sendTransaction: (instructions: any[]) => Promise<any>,
@@ -240,61 +235,41 @@ export class DepositService {
                 })),
             );
 
+            const timeOfSubmission = Date.now();
+
             // Send the transaction
             console.log('  - Calling sendTransaction with instructions...');
-            console.log(
-                '  - sendTransaction function type:',
-                typeof sendTransaction,
-            );
             console.log('  - Instructions array:', instructions);
-            const result = await sendTransaction(instructions);
+            const transactionResult = await sendTransaction(instructions);
 
-            console.log('  - sendTransaction result:', result);
-            console.log('  - Result type:', typeof result);
-            console.log(
-                '  - Result keys:',
-                result ? Object.keys(result) : 'null',
-            );
+            console.log('📥 Transaction result:', transactionResult);
 
-            const signature = result?.signature || result;
-            console.log('  - Extracted signature:', signature);
-
-            // Track transaction confirmation
-            if (signature) {
+            if (
+                transactionResult &&
+                transactionResult.signature &&
+                !('error' in transactionResult)
+            ) {
                 console.log(
-                    '🔍 Starting transaction tracking for signature:',
-                    signature,
-                );
-
-                // Wait for confirmation
-                const isConfirmed = await this.trackTransactionConfirmation(
-                    signature,
-                    amount,
-                );
-
-                if (isConfirmed) {
-                    // Note: Success notification should be handled by the component
-
-                    return {
-                        success: true,
-                        signature,
-                        confirmed: true,
-                    };
-                } else {
-                    return {
-                        success: false,
-                        error: 'Transaction failed or timed out',
-                        signature,
-                        confirmed: false,
-                    };
-                }
-            } else {
-                console.warn(
-                    '⚠️ No signature returned from sendTransaction - cannot track confirmation',
+                    '✅ Order transaction successful:',
+                    transactionResult.signature,
                 );
                 return {
+                    success: true,
+                    signature: transactionResult.signature,
+                    confirmed: transactionResult.confirmed,
+                    timeOfSubmission,
+                };
+            } else {
+                const errorMessage =
+                    typeof transactionResult?.error === 'string'
+                        ? transactionResult.error
+                        : 'Order transaction failed';
+                console.error('❌ Deposit order failed:', errorMessage);
+                return {
                     success: false,
-                    error: 'No transaction signature received',
+                    error: errorMessage,
+                    signature: transactionResult.signature,
+                    timeOfSubmission,
                 };
             }
         } catch (error) {

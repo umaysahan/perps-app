@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useInfoApi } from '~/hooks/useInfoApi';
-import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
 import { WsChannels } from '~/utils/Constants';
 import type { OrderDataIF } from '~/utils/orderbook/OrderBookIFs';
 import ExternalPage from '../ExternalPage/ExternalPage';
@@ -19,7 +19,7 @@ function OrderHistory(props: propsIF) {
 
     const [isFetched, setIsFetched] = useState(false);
 
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
 
     const { orderHistory, fetchedChannels } = useTradeDataStore();
 
@@ -39,12 +39,12 @@ function OrderHistory(props: propsIF) {
         // if (address) {
         //     return (
         //         address.toLocaleLowerCase() ===
-        //         debugWallet.address.toLocaleLowerCase()
+        //         userAddress.toLocaleLowerCase()
         //     );
         // } else {
         //     return true;
         // }
-    }, [address, debugWallet.address]);
+    }, [address, userAddress]);
 
     useEffect(() => {
         if (!isCurrentUser && address) {

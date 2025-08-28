@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import GenericTable from '~/components/Tables/GenericTable/GenericTable';
-import { useDebugStore } from '~/stores/DebugStore';
+import { useUserDataStore } from '~/stores/UserDataStore';
 import {
     sortVaultDepositors,
     type VaultDepositorSortBy,
@@ -17,10 +17,10 @@ interface VaultDepositorTableProps {
 export default function VaultDepositorsTable(props: VaultDepositorTableProps) {
     const { data, isFetched } = props;
 
-    const { debugWallet } = useDebugStore();
+    const { userAddress } = useUserDataStore();
 
     const currentUserRef = useRef<string>('');
-    currentUserRef.current = debugWallet.address;
+    currentUserRef.current = userAddress;
 
     return (
         <>

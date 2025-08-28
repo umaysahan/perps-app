@@ -120,7 +120,6 @@ const OTHER_FORMATTER = new Intl.NumberFormat('en-US', {
 export function usePortfolioManager() {
     const {
         balance: walletBalance,
-        isLoading: isBalanceLoading,
         error: balanceError,
         executeDeposit,
         validateAmount,
@@ -130,10 +129,8 @@ export function usePortfolioManager() {
 
     const {
         availableBalance: withdrawableBalance,
-        isLoading: isWithdrawLoading,
         error: withdrawError,
         executeWithdraw,
-        validateAmount: validateWithdrawAmount,
         startAutoRefresh: startWithdrawAutoRefresh,
         stopAutoRefresh: stopWithdrawAutoRefresh,
     } = useWithdrawService();
@@ -199,7 +196,7 @@ export function usePortfolioManager() {
     const selectedPortfolio = useMemo(() => portfolio, [portfolio]);
 
     const processDeposit = useCallback(
-        async (amount: number) => {
+        async (amount: number | 'max') => {
             // Set processing state to true
             setIsProcessing(true);
             setStatus({ isLoading: true, error: null });
@@ -233,7 +230,7 @@ export function usePortfolioManager() {
     );
 
     const processWithdraw = useCallback(
-        async (amount: number) => {
+        async (amount?: number) => {
             // Set processing state to true
             setIsProcessing(true);
             setStatus({ isLoading: true, error: null });
@@ -303,6 +300,7 @@ export function usePortfolioManager() {
         portfolio,
         selectedPortfolio,
         isProcessing: isProcessing,
+        setIsProcessing,
         status: balanceError
             ? { isLoading: false, error: balanceError }
             : withdrawError

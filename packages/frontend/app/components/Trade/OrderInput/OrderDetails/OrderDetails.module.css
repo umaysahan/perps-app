@@ -26,6 +26,8 @@
     align-items: center;
     align-self: stretch;
     position: relative;
+
+    clip-path: inset(0 0 0 0);
 }
 
 .order_details.expanded .details_viewport {
@@ -37,6 +39,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    overflow: hidden;
 }
 
 .detail_item {
@@ -95,4 +98,11 @@
 .details_viewport::before,
 .details_viewport::after {
     display: none;
+}
+
+/* remove this element from DOM at low screen heights */
+@media only screen and (max-height: 580px) {
+    .order_details {
+        display: none;
+    }
 }

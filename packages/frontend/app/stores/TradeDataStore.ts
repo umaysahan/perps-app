@@ -1,4 +1,3 @@
-import type { MarginBucketInfo } from '@crocswap-libs/ambient-ember';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { TransactionData } from '~/components/Trade/DepositsWithdrawalsTable/DepositsWithdrawalsTableRow';
@@ -41,8 +40,6 @@ type TradeDataStore = UserTradeDataStore & {
     setFetchedChannels: (channels: Set<string>) => void;
     userNonFundingLedgerUpdates: TransactionData[];
     setUserNonFundingLedgerUpdates: (updates: TransactionData[]) => void;
-    marginBucket: MarginBucketInfo | null;
-    setMarginBucket: (marginBucket: MarginBucketInfo | null) => void;
     isTradeInfoExpanded: boolean;
     setIsTradeInfoExpanded: (shouldExpand: boolean) => void;
     updateSymbolInfo: (symbolInfo: TokenDetailsIF) => void; // used for updating symbol info from REST API while ws is sleeping

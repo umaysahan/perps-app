@@ -16,6 +16,7 @@ export type LineData = {
     oid?: number;
     lineStyle: number;
     lineWidth: number;
+    side?: 'buy' | 'sell';
 };
 
 interface LineProps {
@@ -40,6 +41,7 @@ const LineComponent = ({
     const [orderLineItems, setOrderLineItems] = useState<ChartShapeRefs[]>([]);
 
     const cleanupInProgressRef = useRef(false);
+    const isProcessingRef = useRef(false);
 
     const removeShapeById = async (
         chart: IChartingLibraryWidget,
@@ -105,42 +107,55 @@ const LineComponent = ({
 
     useEffect(() => {
         const setupShapes = async () => {
-            if (!chart) return;
+            if (!chart || isProcessingRef.current) return;
 
-            const currentCount = orderLineItemsRef.current.length;
-            const newCount = lines.length;
+            isProcessingRef.current = true;
 
-            if (currentCount > newCount) {
-                const toRemove = orderLineItemsRef.current.slice(newCount);
-                for (const shape of toRemove) {
-                    removeShapeById(chart, shape.lineId);
+            try {
+                const currentCount = orderLineItemsRef.current.length;
+                const newCount = lines.length;
+
+                if (currentCount > newCount) {
+                    const toRemove = orderLineItemsRef.current.slice(newCount);
+                    for (const shape of toRemove) {
+                        removeShapeById(chart, shape.lineId);
+                    }
+                    orderLineItemsRef.current.length = newCount;
                 }
-                orderLineItemsRef.current.length = newCount;
-            }
 
-            if (currentCount < newCount) {
-                for (let i = currentCount; i < newCount; i++) {
-                    const line = lines[i];
-                    const shapeRefs: ChartShapeRefs = {
-                        lineId: await addCustomOrderLine(
-                            chart,
-                            line.yPrice,
-                            line.color,
-                            line.lineStyle,
-                            line.lineWidth,
-                        ),
-                    };
-                    orderLineItemsRef.current.push(shapeRefs);
+                if (currentCount < newCount) {
+                    for (let i = currentCount; i < newCount; i++) {
+                        const line = lines[i];
+                        const shapeRefs: ChartShapeRefs = {
+                            lineId: await addCustomOrderLine(
+                                chart,
+                                line.yPrice,
+                                line.color,
+                                line.lineStyle,
+                                line.lineWidth,
+                            ),
+                        };
+
+                        orderLineItemsRef.current.push(shapeRefs);
+                    }
                 }
-            }
 
-            setOrderLineItems([...orderLineItemsRef.current]);
+                setOrderLineItems([...orderLineItemsRef.current]);
+            } finally {
+                isProcessingRef.current = false;
+            }
         };
 
         if (localChartReady && isChartReady) {
             setupShapes();
         }
-    }, [chart, isChartReady, localChartReady, lines.length]);
+    }, [
+        chart,
+        isChartReady,
+        localChartReady,
+        lines.length,
+        isProcessingRef.current,
+    ]);
 
     useEffect(() => {
         const updateSingleLine = (item: ChartShapeRefs, lineData: LineData) => {

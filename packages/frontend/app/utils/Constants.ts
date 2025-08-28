@@ -52,12 +52,6 @@ export const Langs: LangType[] = [
     },
 ];
 
-export const wsUrls = [
-    'wss://api.hyperliquid.xyz/ws',
-    'wss://pulse-api-mock.liquidity.tools/ws',
-    'wss://api-ui.hyperliquid.xyz/ws',
-];
-
 export const wsEnvironments = [
     {
         label: 'Mock',
@@ -115,6 +109,11 @@ export const TWITTER_CHARACTER_LIMIT = 240;
 export const PERPS_TWITTER = '@ambient_finance';
 export const FOGO_TWITTER = '@FogoChain';
 
+export const externalURLs = {
+    discord: 'https://discord.gg/ambient-finance',
+    twitter: 'https://x.com/ambient_finance',
+};
+
 export enum WsChannels {
     ORDERBOOK = 'l2Book',
     ORDERBOOK_TRADES = 'trades',
@@ -133,16 +132,71 @@ export enum WsChannels {
 const SECONDS = 1000;
 const MINUTES = SECONDS * 60;
 
-export const WS_SLEEP_MODE = 0 * SECONDS;
+export const MIN_DEPOSIT_AMOUNT = 1;
+
+// Delay before entering sleep mode when tab becomes hidden
+// Set to 5 seconds to avoid triggering on brief tab switches
+export const WS_SLEEP_MODE = 5 * SECONDS;
 export const WS_SLEEP_MODE_PRICE_CHECK = 20 * SECONDS;
+// Increased from 2 minutes to 30 minutes to prevent losing limit order fills
+// This gives more time for limit orders to fill before websocket connections are stashed
 export const WS_SLEEP_MODE_STASH_CONNECTION = 2 * MINUTES;
 
 export const EXTERNAL_PAGE_URL_PREFIX = '/v2';
 
 export const MIN_VISIBLE_ORDER_LABEL_RATIO = 0.8;
 
+export const MIN_POSITION_USD_SIZE = 0.01;
+
+export const MARKET_API_URL =
+    import.meta.env.VITE_MARKET_API_URL || 'https://api.hyperliquid.xyz';
+// 'https://throbbing-disk-07bc.doug-fa5.workers.dev';
+
+export const MARKET_INFO_ENDPOINT =
+    import.meta.env.VITE_MARKET_INFO_ENDPOINT || MARKET_API_URL + '/info';
+
 export const MARKET_WS_ENDPOINT =
     import.meta.env.VITE_MARKET_WS_ENDPOINT || 'https://api.hyperliquid.xyz';
+// 'https://throbbing-disk-07bc.doug-fa5.workers.dev';
 
 export const USER_WS_ENDPOINT =
-    import.meta.env.VITE_USER_WS_ENDPOINT || 'https://api.hyperliquid.xyz';
+    import.meta.env.VITE_USER_WS_ENDPOINT ||
+    'https://embindexer.net/ember/tradesocket';
+
+export const blockExplorer =
+    import.meta.env.VITE_BLOCK_EXPLORER || 'https://fogoscan.com';
+
+export const RPC_ENDPOINT =
+    import.meta.env.VITE_RPC_ENDPOINT || 'https://testnet.fogo.io';
+
+// Market Order Constants
+/**
+ * Price offset for market orders in USD.
+ * Buy orders will be filled at best ask + this offset.
+ * Sell orders will be filled at best bid - this offset.
+ * This ensures market orders are filled even with slight price movements.
+ */
+export const MARKET_ORDER_PRICE_OFFSET_USD = 50;
+
+console.log('Market Info Endpoint:', MARKET_INFO_ENDPOINT);
+console.log('Market WS Endpoint:', MARKET_WS_ENDPOINT);
+console.log('User WS Endpoint:', USER_WS_ENDPOINT);
+
+export const wsUrls = [
+    MARKET_WS_ENDPOINT + '/ws',
+    'wss://pulse-api-mock.liquidity.tools/ws',
+    'wss://api-ui.hyperliquid.xyz/ws',
+];
+
+export const API_URLS = {
+    mainnet: 'https://pulse-api-mock.liquidity.tools',
+    testnet: 'https://pulse-api-mock.liquidity.tools',
+    mock: 'https://pulse-api-mock.liquidity.tools',
+
+    local: 'http://localhost:9153',
+
+    hl: MARKET_API_URL,
+};
+
+export type Environment = keyof typeof API_URLS;
+export const DEFAULT_API_ENVIRONMENT: Environment = 'mock';

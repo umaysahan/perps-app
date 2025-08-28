@@ -2,9 +2,9 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import Tabs from '~/components/Tabs/Tabs';
 import { Pages, usePage } from '~/hooks/usePage';
-import { useDebugStore } from '~/stores/DebugStore';
 import { useTradeDataStore } from '~/stores/TradeDataStore';
-import { debugWallets, WsChannels } from '~/utils/Constants';
+import { useUnifiedMarginData } from '~/hooks/useUnifiedMarginData';
+import { WsChannels } from '~/utils/Constants';
 import type { VaultFollowerStateIF } from '~/utils/VaultIFs';
 import BalancesTable from '../BalancesTable/BalancesTable';
 import DepositsWithdrawalsTable from '../DepositsWithdrawalsTable/DepositsWithdrawalsTable';
@@ -15,25 +15,26 @@ import OrderHistoryTable from '../OrderHistoryTable/OrderHistoryTable';
 import PositionsTable from '../PositionsTable/PositionsTable';
 import TradeHistoryTable from '../TradeHistoryTable/TradeHistoryTable';
 // import TwapTable from '../TwapTable/TwapTable';
-import { isEstablished, useSession } from '@fogo/sessions-sdk-react';
+import { useApp } from '~/contexts/AppContext';
 import VaultDepositorsTable from '../VaultDepositorsTable/VaultDepositorsTable';
 import styles from './TradeTable.module.css';
+import { useDebugStore } from '~/stores/DebugStore';
 export interface FilterOption {
     id: string;
     label: string;
 }
 
-// const tradePageBlackListTabs = new Set([
-//     'Funding History',
-//     'Deposits and Withdrawals',
-//     'Depositors',
-// ]);
+const tradePageBlackListTabs = new Set([
+    'Funding History',
+    'Deposits and Withdrawals',
+    'Depositors',
+]);
 
-// const portfolioPageBlackListTabs = new Set([
-//     'Depositors',
-//     'Funding History',
-//     'Deposits and Withdrawals',
-// ]);
+const portfolioPageBlackListTabs = new Set([
+    'Depositors',
+    'Funding History',
+    'Deposits and Withdrawals',
+]);
 const filterOptions: FilterOption[] = [
     { id: 'all', label: 'All' },
     { id: 'active', label: 'Active' },
@@ -59,17 +60,21 @@ export default function TradeTable(props: TradeTableProps) {
         userFills,
         userFundings,
         userOrders,
-        resetUserData,
     } = useTradeDataStore();
 
     const [selectedFilter, setSelectedFilter] = useState<string>('all');
+    const { isDebugWalletActive } = useDebugStore();
     // const [hideSmallBalances, setHideSmallBalances] = useState(false);
+
+    const { assignDefaultAddress } = useApp();
 
     const { page } = usePage();
 
-    const sessionState = useSession();
-
-    const { debugWallet, setDebugWallet } = useDebugStore();
+    const {
+        isLoading: positionsLoading,
+        positions,
+        lastUpdateTime,
+    } = useUnifiedMarginData();
 
     const tabs = useMemo(() => {
         if (!page) return [];
@@ -89,55 +94,35 @@ export default function TradeTable(props: TradeTableProps) {
             availableTabs.push('Depositors');
         }
 
-        // if (page === Pages.TRADE) {
-        //     return availableTabs.filter(
-        //         (tab) => !tradePageBlackListTabs.has(tab),
-        //     );
-        // } else if (page === Pages.PORTFOLIO) {
-        //     return availableTabs.filter(
-        //         (tab) => !portfolioPageBlackListTabs.has(tab),
-        //     );
-        // }
+        if (page === Pages.TRADE) {
+            return availableTabs.filter(
+                (tab) => !tradePageBlackListTabs.has(tab),
+            );
+        } else if (page === Pages.PORTFOLIO) {
+            return availableTabs.filter(
+                (tab) => !portfolioPageBlackListTabs.has(tab),
+            );
+        }
         return availableTabs;
     }, [page]);
 
     // reset wallet on trade tables after switch back from vaults
     useEffect(() => {
-        if (
-            !vaultPage &&
-            !debugWallets.reduce((acc, wallet) => {
-                return acc || wallet.address === debugWallet.address;
-            }, false)
-        ) {
-            setDebugWallet(debugWallets[0]);
+        if (!vaultPage) {
+            assignDefaultAddress();
         }
     }, [vaultPage]);
-
     useEffect(() => {
-        if (isEstablished(sessionState)) {
-            // if wallet public key starts with alpha char, use debug wallet 1, else use debug wallet 2
-            setDebugWallet(
-                sessionState.walletPublicKey.toString().match(/^[a-zA-Z]/)
-                    ? debugWallets[0]
-                    : debugWallets[1],
-            );
-        } else {
-            setDebugWallet(debugWallets[2]); // set to empty account
-            resetUserData();
+        if (page === Pages.TRADE) {
+            if (tradePageBlackListTabs.has(selectedTradeTab)) {
+                handleTabChange('Positions');
+            }
+        } else if (page === Pages.PORTFOLIO) {
+            if (portfolioPageBlackListTabs.has(selectedTradeTab)) {
+                handleTabChange('Positions');
+            }
         }
-    }, [isEstablished(sessionState)]);
-
-    // useEffect(() => {
-    //     if (page === Pages.TRADE) {
-    //         if (tradePageBlackListTabs.has(selectedTradeTab)) {
-    //             handleTabChange('Positions');
-    //         }
-    //     } else if (page === Pages.PORTFOLIO) {
-    //         if (portfolioPageBlackListTabs.has(selectedTradeTab)) {
-    //             handleTabChange('Positions');
-    //         }
-    //     }
-    // }, [page]);
+    }, [page]);
 
     const {
         orderHistoryFetched,
@@ -182,7 +167,11 @@ export default function TradeTable(props: TradeTableProps) {
             case 'Positions':
                 return (
                     <PositionsTable
-                        isFetched={webDataFetched}
+                        isFetched={
+                            !isDebugWalletActive
+                                ? !positionsLoading || lastUpdateTime > 0
+                                : webDataFetched
+                        }
                         selectedFilter={selectedFilter}
                     />
                 );
@@ -190,7 +179,7 @@ export default function TradeTable(props: TradeTableProps) {
                 return (
                     <OpenOrdersTable
                         selectedFilter={selectedFilter}
-                        isFetched={webDataFetched}
+                        isFetched={orderHistoryFetched}
                         data={userOrders}
                     />
                 );

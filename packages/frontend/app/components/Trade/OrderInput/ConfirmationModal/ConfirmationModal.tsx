@@ -1,9 +1,11 @@
-import styles from './ConfirmationModal.module.css';
+import { useEffect, useMemo } from 'react';
+import { LuCircleHelp } from 'react-icons/lu';
 import Tooltip from '~/components/Tooltip/Tooltip';
-import { AiOutlineQuestionCircle } from 'react-icons/ai';
+import useNumFormatter from '~/hooks/useNumFormatter';
+import { useAppSettings } from '~/stores/AppSettingsStore';
 import ToggleSwitch from '../../ToggleSwitch/ToggleSwitch';
 import type { modalContentT } from '../OrderInput';
-import { useAppSettings } from '~/stores/AppSettingsStore';
+import styles from './ConfirmationModal.module.css';
 
 interface propsIF {
     tx: modalContentT;
@@ -16,6 +18,9 @@ interface propsIF {
     isEnabled: boolean;
     toggleEnabled: () => void;
     isProcessing?: boolean;
+    setIsProcessingOrder?: (value: boolean) => void;
+    liquidationPrice?: number | null;
+    usdOrderValue?: number;
 }
 type InfoItem = {
     label: string;
@@ -34,12 +39,61 @@ export default function ConfirmationModal(props: propsIF) {
         size,
         limitPrice,
         isProcessing,
+        setIsProcessingOrder,
+        liquidationPrice,
+        usdOrderValue,
     } = props;
 
     const { getBsColor } = useAppSettings();
 
+    const { formatNum } = useNumFormatter();
+
     const buyColor = getBsColor().buy;
     const sellColor = getBsColor().sell;
+
+    useEffect(() => {
+        if (isProcessing) {
+            setIsProcessingOrder?.(false);
+        }
+    }, []);
+
+    // hook to handle Enter key press for order submission
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                submitFn();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [submitFn]);
+
+    const liquidationPriceDisplay = useMemo(() => {
+        if (liquidationPrice === null || liquidationPrice === undefined) {
+            return '-';
+        }
+
+        const humanReadablePrice = liquidationPrice / 1e6; // Convert from 10^8 to human readable
+
+        // Display '-' if price is below 0 or above 100 million
+        if (humanReadablePrice <= 0 || humanReadablePrice > 100_000_000) {
+            return '-';
+        }
+
+        return formatNum(
+            humanReadablePrice,
+            null,
+            true,
+            true,
+            false,
+            false,
+            0,
+            true,
+        );
+    }, [liquidationPrice, formatNum]);
 
     const dataInfo: InfoItem[] = [
         {
@@ -61,21 +115,26 @@ export default function ConfirmationModal(props: propsIF) {
             },
         },
         {
+            label: 'Order Value',
+            value: usdOrderValue
+                ? formatNum(usdOrderValue, null, true, true)
+                : '-',
+            valueStyle: {
+                color: tx.includes('buy')
+                    ? getBsColor().buy
+                    : getBsColor().sell,
+            },
+        },
+        {
             label: 'Price',
             value: tx.includes('limit') ? limitPrice || '--' : 'Market',
             className: styles.white,
         },
         {
             label: 'Est. Liquidation Price',
-            value: 'N/A',
+            value: liquidationPriceDisplay,
             tooltip:
                 'Estimated price at which your position will be liquidated',
-            className: styles.white,
-        },
-        {
-            label: 'Network Fee',
-            value: '0.000001 FOGO',
-            tooltip: 'Fee required to execute this trade on the network',
             className: styles.white,
         },
     ];
@@ -92,7 +151,7 @@ export default function ConfirmationModal(props: propsIF) {
                                     content={info?.tooltip}
                                     position='right'
                                 >
-                                    <AiOutlineQuestionCircle size={13} />
+                                    <LuCircleHelp size={12} />
                                 </Tooltip>
                             )}
                         </div>
@@ -118,7 +177,7 @@ export default function ConfirmationModal(props: propsIF) {
                 />
             </div>
             <button
-                className={styles.confirmButton}
+                className={`${styles.confirmButton}`}
                 onClick={isProcessing ? undefined : submitFn}
                 style={{
                     height: '47px',
