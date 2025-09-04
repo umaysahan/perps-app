@@ -78,6 +78,7 @@ export const createUserTradesSlice = (set: any, get: any) => ({
             case 'long':
                 return orderHistory.filter((e) => e.side === 'buy');
             case 'short':
+                console.log('here filtering short');
                 return orderHistory.filter((e) => e.side === 'sell');
         }
     },

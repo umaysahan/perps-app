@@ -107,6 +107,8 @@ export default function OpenOrdersTableHeader({
     sortBy,
     sortDirection,
     sortClickHandler,
+    hasActiveOrders = false,
+    onCancelAll,
 }: OpenOrdersTableHeaderProps) {
     return (
         <div className={styles.headerContainer}>
@@ -119,15 +121,17 @@ export default function OpenOrdersTableHeader({
                             sortClickHandler(header.key as OrderDataSortBy);
                         }
                     }}
+                    role={header.sortable ? 'button' : undefined}
+                    tabIndex={header.sortable ? 0 : -1}
                 >
                     {header.key === 'cancel' ? (
                         <button
                             className={`${styles.cancelButton} ${!hasActiveOrders ? styles.disabled : ''}`}
-                            onClick={
-                                hasActiveOrders && onCancelAll
-                                    ? onCancelAll
-                                    : undefined
-                            }
+                            onClick={(e) => {
+                                e.stopPropagation(); // parent onClick tetiklenmesin
+                                if (hasActiveOrders && onCancelAll)
+                                    onCancelAll();
+                            }}
                             disabled={!hasActiveOrders}
                             type='button'
                         >
@@ -139,7 +143,7 @@ export default function OpenOrdersTableHeader({
                             {header.sortable && (
                                 <SortIcon
                                     sortDirection={
-                                        sortDirection && header.key === sortBy
+                                        header.key === sortBy
                                             ? sortDirection
                                             : undefined
                                     }

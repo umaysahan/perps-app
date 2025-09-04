@@ -34,6 +34,7 @@ export default function OrderHistoryTable(props: OrderHistoryTableProps) {
     currentUserRef.current = userAddress;
 
     const filteredOrderHistory = useMemo(() => {
+        console.log('selected filter: ', selectedFilter);
         return filterOrderHistory(data, selectedFilter);
     }, [data, selectedFilter, symbol]);
 

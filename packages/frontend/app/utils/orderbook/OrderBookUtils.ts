@@ -206,6 +206,13 @@ export const sortOrderData = (
                         ? a.origSz - b.origSz
                         : b.origSz - a.origSz,
                 );
+
+            case 'filledSz':
+                return [...orderData].sort((a, b) =>
+                    sortDirection === 'asc'
+                        ? (a.filledSz ?? 0) - (b.filledSz ?? 0)
+                        : (b.filledSz ?? 0) - (a.filledSz ?? 0),
+                );
             case 'orderValue':
                 return [...orderData].sort((a, b) =>
                     sortDirection === 'asc'
